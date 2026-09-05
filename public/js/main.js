@@ -7,6 +7,8 @@ const estado = {
   dificuldadeId: null,
   cobrancaAtual: 0,
   gols: 0,
+  resultadosCobrancas: [], // 'gol' ou 'defesa' por cobrança, pra colorir bolinha verde/vermelha
+  historicoCobrancas: [], // true = gol, false = defesa
   perguntaAtual: null,
   zonaCorreta: null,
   jogoPenalti: null,
@@ -60,10 +62,14 @@ function sortearNovoApelido() {
   estado.apelido = sortearApelido();
   document.getElementById('texto-apelido').textContent = estado.apelido;
 
-  // Avatar animado direto da API pública do DiceBear (sem proxy/backend).
-  // Se o DiceBear estiver fora do ar, o container com cor de fundo cobre.
+  // Avatar: tenta o endpoint /api/avatar (proxy DiceBear) primeiro.
+  // Se não estiver disponível, faz fallback direto pra API pública.
   const avatarImg = document.getElementById('avatar-img');
-  avatarImg.src = gerarUrlAvatar(estado.apelido);
+  avatarImg.onerror = function() {
+    this.onerror = null;
+    this.src = gerarUrlAvatar(estado.apelido);
+  };
+  avatarImg.src = `/api/avatar?apelido=${encodeURIComponent(estado.apelido)}`;
 
   const avatar = document.getElementById('avatar-apelido');
   avatar.classList.remove('pulo');
@@ -154,6 +160,8 @@ const ORDEM_ZONAS = ['topo-esquerda', 'topo-direita', 'meio', 'baixo-esquerda', 
 function iniciarFase1() {
   estado.cobrancaAtual = 0;
   estado.gols = 0;
+  estado.resultadosCobrancas = [];
+  estado.historicoCobrancas = [];
   mostrarTela('tela-fase1');
   atualizarBolinhasProgresso();
 
@@ -180,8 +188,12 @@ function atualizarBolinhasProgresso() {
   for (let i = 0; i < TOTAL_COBRANCAS; i++) {
     const bolinha = document.createElement('span');
     bolinha.className = 'bolinha-cobranca';
-    if (i < estado.cobrancaAtual) bolinha.classList.add('feita');
-    else if (i === estado.cobrancaAtual) bolinha.classList.add('atual');
+    if (i < estado.resultadosCobrancas.length) {
+      // Cobrança já feita: verde se gol, vermelha se defesa
+      bolinha.classList.add(estado.resultadosCobrancas[i] === 'gol' ? 'acerto' : 'erro');
+    } else if (i === estado.cobrancaAtual) {
+      bolinha.classList.add('atual');
+    }
     container.appendChild(bolinha);
   }
 }
@@ -231,9 +243,11 @@ function chutarZona(botaoClicado) {
 function finalizarCobranca(foiGol) {
   if (foiGol) {
     estado.gols++;
+    estado.resultadosCobrancas.push('gol');
     document.getElementById('mensagem-feedback').textContent = 'GOOOL! Conta certa! 🎉';
     Narracao.falar('Gol! Conta certa!');
   } else {
+    estado.resultadosCobrancas.push('defesa');
     document.getElementById('mensagem-feedback').textContent = 'O goleiro defendeu! Vamos pra próxima. 💪';
     Narracao.falar('O goleiro defendeu! Vamos para a próxima cobrança.');
   }
@@ -260,13 +274,8 @@ function irParaResultado() {
 
   document.getElementById('placar-final').textContent = `${estado.gols} / ${TOTAL_COBRANCAS}`;
 
-  const mensagens = {
-    3: 'Fase perfeita! Você é o Craque das Contas! 🏆',
-    2: 'Muito bem! Só faltou um gol pra fase perfeita. ⭐',
-    1: 'Bom começo! Bora treinar mais um pouco. 💪',
-    0: 'Valeu por jogar! Vamos treinar mais e voltar pro gol. 🙂'
-  };
-  document.getElementById('resumo-resultado').textContent = mensagens[estado.gols];
+  const mensagem = sortearMensagemResultado(estado.gols);
+  document.getElementById('resumo-resultado').textContent = mensagem;
 
   // Salva local sempre (funciona sem internet)
   try {
@@ -289,7 +298,7 @@ function irParaResultado() {
     });
   }
 
-  Narracao.falar(mensagens[estado.gols]);
+  Narracao.falar(mensagem);
   mostrarTela('tela-resultado');
 }
 

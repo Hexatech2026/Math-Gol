@@ -4,18 +4,23 @@
 // com um item de ANIMAIS.
 
 const PERSONAGENS = [
+  // Neutros / masculinos
   'Capitão', 'Fera', 'Relâmpago', 'Craque', 'Foguete',
-  'Estrela', 'Furacão', 'Campeão', 'Guerreiro', 'Fenômeno'
+  'Furacão', 'Campeão', 'Guerreiro', 'Fenômeno', 'Trovão',
+  'Meteoro', 'Torpedo', 'Escudo', 'Cometa', 'Raio',
+  // Femininos
+  'Capitã', 'Estrela', 'Campeã', 'Guerreira', 'Fênix',
+  'Centelha', 'Valente', 'Coragem', 'Vitória', 'Aurora',
+  'Heroína', 'Lenda', 'Chama', 'Brilho', 'Medalha'
 ];
 
 const ANIMAIS = [
   'Tigre', 'Águia', 'Onça', 'Leão', 'Gavião',
-  'Puma', 'Lobo', 'Falcão', 'Pantera', 'Tubarão'
+  'Puma', 'Lobo', 'Falcão', 'Pantera', 'Tubarão',
+  'Golfinho', 'Coruja', 'Raposa', 'Jaguar', 'Fênix',
+  'Coelho', 'Lince', 'Arara', 'Borboleta', 'Flamingo'
 ];
 
-// 6 seleções para essa primeira versão do front (fácil de testar/validar).
-// Cada seleção usa duas cores próprias em vez de bandeiras reais, para não
-// depender de assets de imagem nessa fase do protótipo.
 const SELECOES = [
   { id: 'brasil',    nome: 'Brasil',    corPrimaria: '#2E9E5B', corSecundaria: '#FFC63B' },
   { id: 'argentina', nome: 'Argentina', corPrimaria: '#6EC1E4', corSecundaria: '#FFFDF6' },
@@ -25,30 +30,49 @@ const SELECOES = [
   { id: 'portugal',  nome: 'Portugal',  corPrimaria: '#2E9E5B', corSecundaria: '#E0343B' }
 ];
 
-// Níveis de dificuldade que a criança escolhe antes da Fase 1.
 const DIFICULDADES = [
-  {
-    id: 'facil',
-    nome: 'Fácil',
-    descricao: '+ e − até 10',
-    icone: '⭐'
-  },
-  {
-    id: 'medio',
-    nome: 'Médio',
-    descricao: '+ − até 20 e tabuada',
-    icone: '⭐⭐'
-  },
-  {
-    id: 'dificil',
-    nome: 'Difícil',
-    descricao: '× e ÷',
-    icone: '⭐⭐⭐'
-  }
+  { id: 'facil',    nome: 'Fácil',    descricao: '+ e − até 10', icone: '⭐' },
+  { id: 'medio',    nome: 'Médio',    descricao: '+ − até 20 e tabuada', icone: '⭐⭐' },
+  { id: 'dificil',  nome: 'Difícil',  descricao: '× e ÷', icone: '⭐⭐⭐' }
 ];
+
+// Mensagens de resultado — sorteadas aleatoriamente por faixa de gols,
+// sempre motivacionais e nunca punitivas.
+const MENSAGENS_RESULTADO = {
+  0: [
+    'Valeu por jogar! Bora treinar mais e voltar pra fazer gol! 🙂',
+    'Hoje o goleiro tava inspirado! Tenta de novo, você consegue! 💪',
+    'Não desiste! Cada tentativa te deixa mais craque! ⚽',
+    'O importante é tentar! Vamos de novo? 🔥'
+  ],
+  1: [
+    'Bom começo! Você já fez um gol, bora buscar mais! 💪',
+    'Um gol é só o aquecimento! Tenta de novo pra fazer mais! ⚽',
+    'Já tá no caminho certo! Mais uma rodada e você arrebenta! 🌟',
+    'Boa! Um gol já é vitória! Quer tentar fazer dois agora? 🎯'
+  ],
+  2: [
+    'Quase perfeito! Faltou só um golzinho! Tenta de novo! ⭐',
+    'Dois gols! Tá quase lá, falta só um pra fase perfeita! 🔥',
+    'Impressionante! Mais uma tentativa e você fecha com 3! 💪',
+    'Show! Dois de três! Bora buscar a fase perfeita? 🏅'
+  ],
+  3: [
+    'FASE PERFEITA! Você é o Craque das Contas! 🏆',
+    'Três de três! Ninguém segura você! Bora pro próximo desafio! 🌟',
+    'Perfeito! Acho que esse nível tá fácil demais pra você! 😎',
+    'Goleada! Manda bem assim no próximo nível também! 🔥',
+    'Hat-trick de contas certas! Você é fera demais! ⚽🏆'
+  ]
+};
 
 function sortearApelido() {
   const personagem = PERSONAGENS[Math.floor(Math.random() * PERSONAGENS.length)];
   const animal = ANIMAIS[Math.floor(Math.random() * ANIMAIS.length)];
   return `${personagem} ${animal}`;
+}
+
+function sortearMensagemResultado(gols) {
+  const lista = MENSAGENS_RESULTADO[gols] || MENSAGENS_RESULTADO[0];
+  return lista[Math.floor(Math.random() * lista.length)];
 }
