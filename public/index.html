@@ -6,11 +6,13 @@
 <title>MathGol — Cobrança de pênalti com matemática</title>
 <meta name="description" content="MathGol: fase de pênaltis com perguntas de matemática, para crianças.">
 
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -120,12 +122,12 @@
 <div id="app">
 
   <div class="topo">
-    <img id="logo-mini" class="marca-logo" src="assets/hexatech-logo.png" alt="HexaTech">
+    <img id="logo-mini" class="marca-logo" src="hexatech-logo.png" alt="HexaTech">
     <button id="botao-acessibilidade" class="botao-icone" type="button" aria-label="Abrir opções de acessibilidade">♿</button>
   </div>
 
   <section id="tela-menu" class="tela tela-menu">
-    <img class="logo-hero" src="assets/hexatech-logo-hero.png" alt="HexaTech">
+    <img class="logo-hero" src="hexatech-logo-hero.png" alt="HexaTech">
     <svg class="mascote mascote-grande" viewBox="0 0 100 100" aria-hidden="true">
       <circle cx="50" cy="50" r="46" fill="#FFFDF6" stroke="#21303B" stroke-width="5"/>
       <polygon points="50,28 63,38 58,54 42,54 37,38" fill="#21303B"/>
@@ -140,15 +142,28 @@
     </div>
   </section>
 
-  <section id="tela-apelido" class="tela">
-    <h2>Seu apelido de craque</h2>
+  <section id="tela-apelido" class="tela tela-personalizar">
+    <h2>Personalize seu craque</h2>
     <span class="selo">🔒 Sem nome real</span>
-    <div class="avatar-apelido" id="avatar-apelido" aria-hidden="true">
-      <img id="avatar-img" class="avatar-img" src="" alt="">
+
+    <div class="preview-personalizar">
+      <div class="avatar-apelido" id="avatar-apelido" aria-hidden="true">
+        <img id="avatar-img" class="avatar-img" src="" alt="">
+      </div>
+      <div class="campo-apelido">
+        <label for="input-apelido" class="rotulo-campo">Seu apelido de craque</label>
+        <div class="linha-apelido">
+          <input id="input-apelido" class="input-apelido" type="text" maxlength="20" autocomplete="off" spellcheck="false" inputmode="text">
+          <button id="botao-sortear-apelido" class="botao-icone" type="button" aria-label="Sortear novo apelido">🎲</button>
+        </div>
+      </div>
     </div>
-    <p id="texto-apelido" class="caixa-apelido">—</p>
-    <div class="pilha-botoes">
-      <button id="botao-sortear-apelido" class="botao botao-azul" type="button">🎲 Sortear outro</button>
+
+    <h3 class="subtitulo-secao">Escolha seu avatar</h3>
+    <div id="abas-avatar" class="abas-avatar"></div>
+    <div id="grade-avatares" class="grade-avatares"></div>
+
+    <div class="pilha-botoes" style="margin-top: 20px;">
       <button id="botao-confirmar-apelido" class="botao" type="button">Confirmar ✅</button>
     </div>
   </section>
@@ -200,7 +215,7 @@
 
 <footer class="rodape">
   <span class="rodape-texto">Um jogo</span>
-  <img class="rodape-logo" src="assets/hexatech-logo.png" alt="HexaTech">
+  <img class="rodape-logo" src="hexatech-logo.png" alt="HexaTech">
 </footer>
 
 <div id="sobreposicao-acessibilidade" class="sobreposicao">
@@ -225,16 +240,17 @@
 </div>
 
 <!-- Firebase (módulo ES — carrega antes dos scripts do jogo) -->
-<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="firebase-config.js"></script>
 
 <!-- Phaser 3 (CDN — degrada graciosamente se falhar) -->
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 
-<!-- Scripts do jogo (ordem importa: data → questions → narration → game → main) -->
-<script src="js/data.js"></script>
-<script src="js/questions.js"></script>
-<script src="js/narration.js"></script>
-<script src="js/game.js"></script>
-<script src="js/main.js"></script>
+<!-- Scripts do jogo (ordem importa: data → avatar-data → questions → narration → game → main) -->
+<script src="data.js"></script>
+<script src="avatar-data.js"></script>
+<script src="questions.js"></script>
+<script src="narration.js"></script>
+<script src="game.js"></script>
+<script src="main.js"></script>
 </body>
 </html>

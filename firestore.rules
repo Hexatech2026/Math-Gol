@@ -11,15 +11,23 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Documento do jogador: qualquer um pode criar (é anônimo) e ler/atualizar
-    // o próprio documento se souber o token (que é um UUID aleatório).
+    // Documento do jogador (conta / progresso matemático): qualquer um pode
+    // criar (é anônimo) e ler/atualizar o próprio documento se souber o
+    // token (que é um UUID aleatório).
     match /jogadores/{token} {
       allow read, write: if true;
 
-      // Subcoleção de resultados: mesma regra.
+      // Subcoleção de resultados (histórico das partidas): mesma regra.
       match /resultados/{resultadoId} {
         allow read, write: if true;
       }
+    }
+
+    // Coleção própria só com apelido + avatar escolhidos na tela de
+    // personalizar (separada de "jogadores" de propósito, ver
+    // public/firebase-config.js → salvarPerfil()).
+    match /apelidos/{token} {
+      allow read, write: if true;
     }
 
     // Nega tudo mais por padrão.

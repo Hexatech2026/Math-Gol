@@ -1,36 +1,43 @@
-// api/avatar.js — GET /api/avatar?apelido=Craque+Falcão
+// api/avatar.js
+//   GET /api/avatar?apelido=Craque+Falcão              → estilo escolhido por hash do apelido (compatibilidade)
+//   GET /api/avatar?estilo=bottts&seed=Bola1            → estilo e seed escolhidos direto (tela de personalizar)
 //
-// Gera um avatar animado único para cada apelido usando a API pública do
-// DiceBear (https://www.dicebear.com). O apelido vira a "seed" do avatar,
-// então o mesmo apelido sempre gera o mesmo boneco — determinístico, sem
-// aleatoriedade. Sem autenticação, sem custo, sem dado pessoal.
+// Gera um avatar animado usando a API pública do DiceBear
+// (https://www.dicebear.com). Sem autenticação, sem custo, sem dado pessoal.
 //
 // O endpoint faz proxy do SVG em vez de redirecionar, porque:
 //   1. Evita expor o apelido na barra de endereço (query string visível)
 //   2. Permite cachear o resultado na própria Vercel (edge cache)
 //   3. Se o DiceBear sair do ar, retorna um SVG fallback em vez de erro
 //
-// Estilos escolhidos pensando em criança do fundamental:
-//   - thumbs       → mãozinhas com carinhas, muito divertido
-//   - fun-emoji    → emojis expressivos e coloridos
-//   - critters     → bichinhos fofos
-//   - bottts       → robôs bobos e simpáticos
-//   - adventurer   → personagens estilo RPG, olhos grandes
-//   - pixelbot     → robozinhos pixelados
-//
-// O estilo é escolhido deterministicamente a partir do apelido (não é
-// aleatório — o mesmo apelido sempre cai no mesmo estilo), pra manter a
-// consistência visual entre sessões.
+// Estilos aceitos (pensados pra criança do fundamental, iguais aos
+// mostrados na galeria da tela de personalizar — ver public/avatar-data.js):
+//   - thumbs, fun-emoji, critters, bottts, croodles, big-smile,
+//     pixel-art, notionists
 
 const https = require('https');
 
-const ESTILOS = [
+// Usados no modo antigo (?apelido=...), onde o estilo é escolhido por hash.
+const ESTILOS_HASH = [
   'thumbs',
   'fun-emoji',
   'critters',
   'bottts',
-  'adventurer',
-  'pixelbot'
+  'croodles',
+  'big-smile'
+];
+
+// Todos os estilos que o endpoint aceita quando vêm explícitos via
+// ?estilo=...&seed=... (inclui os da galeria de personalização).
+const ESTILOS_PERMITIDOS = [
+  'thumbs',
+  'fun-emoji',
+  'critters',
+  'bottts',
+  'croodles',
+  'big-smile',
+  'pixel-art',
+  'notionists'
 ];
 
 // Fallback SVG caso o DiceBear esteja fora do ar: um círculo colorido com
@@ -77,14 +84,36 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ erro: 'Use GET.' });
   }
 
-  const apelido = (req.query && req.query.apelido) || '';
-  if (!apelido || apelido.length > 40) {
-    return res.status(400).json({ erro: 'Parâmetro "apelido" ausente ou muito longo.' });
+  const query = req.query || {};
+  const estiloPedido = (query.estilo || '').toString();
+  const seedPedido = (query.seed || '').toString();
+  const apelido = (query.apelido || '').toString();
+
+  let estilo;
+  let seed;
+  let seedParaFallback;
+
+  if (estiloPedido || seedPedido) {
+    // Modo novo: tela de personalizar manda o estilo e a seed escolhidos.
+    if (!ESTILOS_PERMITIDOS.includes(estiloPedido)) {
+      return res.status(400).json({ erro: 'Parâmetro "estilo" inválido.' });
+    }
+    if (!seedPedido || seedPedido.length > 40) {
+      return res.status(400).json({ erro: 'Parâmetro "seed" ausente ou muito longo.' });
+    }
+    estilo = estiloPedido;
+    seed = encodeURIComponent(seedPedido);
+    seedParaFallback = seedPedido;
+  } else {
+    // Modo antigo (compatibilidade): estilo escolhido por hash do apelido.
+    if (!apelido || apelido.length > 40) {
+      return res.status(400).json({ erro: 'Parâmetro "apelido" (ou "estilo"+"seed") ausente ou muito longo.' });
+    }
+    estilo = ESTILOS_HASH[hashSimples(apelido) % ESTILOS_HASH.length];
+    seed = encodeURIComponent(apelido);
+    seedParaFallback = apelido;
   }
 
-  // Escolhe o estilo deterministicamente a partir do apelido
-  const estilo = ESTILOS[hashSimples(apelido) % ESTILOS.length];
-  const seed = encodeURIComponent(apelido);
   const url = `https://api.dicebear.com/10.x/${estilo}/svg?seed=${seed}&animationVariant=medium&backgroundColor=transparent`;
 
   res.setHeader('Content-Type', 'image/svg+xml');
@@ -95,6 +124,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).send(svg);
   } catch (erro) {
     console.warn('[avatar] DiceBear indisponível, usando fallback:', erro.message);
-    return res.status(200).send(svgFallback(apelido));
+    return res.status(200).send(svgFallback(seedParaFallback));
   }
 };
