@@ -9,6 +9,7 @@ import {
   doc,
   setDoc,
   getDoc,
+  getDocs,
   addDoc,
   collection,
   serverTimestamp
@@ -59,6 +60,45 @@ async function obterOuCriarToken() {
 
   try { localStorage.setItem('mathgol_token', token); } catch (e) {}
   return token;
+}
+
+// ---------- Configurações (listas que antes eram só fixas no data.js) ----------
+
+// Cada lista mora na sua própria coleção no Firestore, pra não misturar
+// tudo numa coleção só (ver scripts/seed-firestore.js, que faz a carga
+// inicial dessas coleções a partir das mesmas listas que já existiam em
+// data.js). Se uma coleção estiver vazia ou o Firestore estiver
+// indisponível, essa lista simplesmente não é sobrescrita e o jogo segue
+// com o padrão fixo definido em data.js.
+async function buscarListaSimples(nomeColecao, campo) {
+  const snap = await getDocs(collection(db, nomeColecao));
+  return snap.docs.map(d => d.data()[campo]).filter(Boolean);
+}
+
+async function buscarListaComId(nomeColecao) {
+  const snap = await getDocs(collection(db, nomeColecao));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function carregarConfiguracoes() {
+  const resultado = { personagens: [], animais: [], selecoes: [], dificuldades: [] };
+
+  await Promise.all([
+    buscarListaSimples('personagens', 'texto').then(lista => { resultado.personagens = lista; }).catch(erro => {
+      console.warn('Não foi possível carregar "personagens" do Firebase, usando padrão:', erro);
+    }),
+    buscarListaSimples('animais', 'texto').then(lista => { resultado.animais = lista; }).catch(erro => {
+      console.warn('Não foi possível carregar "animais" do Firebase, usando padrão:', erro);
+    }),
+    buscarListaComId('selecoes').then(lista => { resultado.selecoes = lista; }).catch(erro => {
+      console.warn('Não foi possível carregar "selecoes" do Firebase, usando padrão:', erro);
+    }),
+    buscarListaComId('dificuldades').then(lista => { resultado.dificuldades = lista; }).catch(erro => {
+      console.warn('Não foi possível carregar "dificuldades" do Firebase, usando padrão:', erro);
+    })
+  ]);
+
+  return resultado;
 }
 
 // ---------- Perfil (apelido + avatar escolhidos na tela de personalizar) ----------
@@ -138,6 +178,7 @@ async function buscarProgresso(token) {
 // Exporta pro escopo global pra ser usado pelo main.js (que não é módulo ES)
 window.FirebaseMathGol = {
   obterOuCriarToken,
+  carregarConfiguracoes,
   salvarPerfil,
   salvarProgresso,
   buscarProgresso

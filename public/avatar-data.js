@@ -14,9 +14,9 @@ const CATEGORIAS_AVATAR = [
   { id: 'notionists',  nome: 'Modernos',     estilo: 'notionists',  seeds: ['Bola1', 'Bola2', 'Bola3', 'Bola4'] },
 ];
 
-// Todos os estilos aceitos pelo back-end (api/avatar.js) quando o front pede
-// um avatar específico por estilo+seed. Precisa ficar em sincronia com a
-// lista ESTILOS_PERMITIDOS de lá.
+// Todos os estilos que o front-end pode usar diretamente na API pública do
+// DiceBear (public/main.js → gerarUrlAvatar()). Não existe mais nenhum
+// endpoint próprio pra isso — a URL é montada direto pro dicebear.com.
 const ESTILOS_AVATAR_PERMITIDOS = CATEGORIAS_AVATAR.map(categoria => categoria.estilo);
 
 // Categoria/seed padrão pra quando ainda não existe escolha salva.

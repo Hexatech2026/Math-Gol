@@ -20,16 +20,29 @@ const estado = {
 const TOTAL_COBRANCAS = 3;
 let categoriaAvatarAtiva = CATEGORIAS_AVATAR[0].id;
 
-// Constrói a URL do avatar a partir do estilo+seed escolhidos na galeria,
-// usando o proxy /api/avatar (com fallback direto pro DiceBear se o proxy
-// não estiver disponível, ex.: rodando o front sem o back-end da Vercel).
-function gerarUrlAvatarProxy(estilo, seed) {
-  return `/api/avatar?estilo=${encodeURIComponent(estilo)}&seed=${encodeURIComponent(seed)}`;
+// Constrói a URL do avatar DIRETO na API pública do DiceBear — sem passar
+// por um endpoint próprio nem por busca/hash a partir do apelido. Estilo e
+// seed vêm sempre da galeria (public/avatar-data.js), então a imagem é
+// sempre a mesma pro mesmo par estilo+seed, e é sempre buscada direto do
+// dicebear.com (igual ao repositório de referência).
+function gerarUrlAvatar(estilo, seed) {
+  return `https://api.dicebear.com/10.x/${estilo}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=transparent`;
 }
 
-function gerarUrlAvatarDireta(estilo, seed) {
-  return `https://api.dicebear.com/10.x/${estilo}/svg?seed=${encodeURIComponent(seed)}&animationVariant=medium&backgroundColor=transparent`;
+// Fallback só pra quando o navegador está de fato sem internet e a imagem
+// do DiceBear não carrega: um círculo colorido com a inicial da seed,
+// gerado localmente (data URI), sem depender de nenhum servidor.
+function gerarAvatarFallbackLocal(seed) {
+  const inicial = (seed || '?').charAt(0).toUpperCase();
+  const cores = ['#2E9E5B', '#3AA9D6', '#FFC63B', '#E1493F', '#9B59B6'];
+  const cor = cores[seed.length % cores.length];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="48" fill="${cor}"/>
+    <text x="50" y="50" dy="0.35em" text-anchor="middle" font-family="sans-serif" font-size="42" font-weight="600" fill="#FFFDF6">${inicial}</text>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
+
 
 // ---------- Navegação ----------
 
@@ -83,9 +96,9 @@ function atualizarPreviewAvatar() {
   const avatarImg = document.getElementById('avatar-img');
   avatarImg.onerror = function() {
     this.onerror = null;
-    this.src = gerarUrlAvatarDireta(estado.avatarEstilo, estado.avatarSeed);
+    this.src = gerarAvatarFallbackLocal(estado.avatarSeed);
   };
-  avatarImg.src = gerarUrlAvatarProxy(estado.avatarEstilo, estado.avatarSeed);
+  avatarImg.src = gerarUrlAvatar(estado.avatarEstilo, estado.avatarSeed);
 }
 
 function renderizarAbasAvatar() {
@@ -124,9 +137,9 @@ function renderizarGradeAvatares() {
     img.alt = `Avatar ${categoria.nome}`;
     img.onerror = function() {
       this.onerror = null;
-      this.src = gerarUrlAvatarDireta(categoria.estilo, seed);
+      this.src = gerarAvatarFallbackLocal(seed);
     };
-    img.src = gerarUrlAvatarProxy(categoria.estilo, seed);
+    img.src = gerarUrlAvatar(categoria.estilo, seed);
     opcao.appendChild(img);
     opcao.addEventListener('click', () => {
       estado.avatarEstilo = categoria.estilo;
@@ -459,5 +472,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // (vários toques depois), o token já vai estar pronto.
   if (window.FirebaseMathGol) {
     window.FirebaseMathGol.obterOuCriarToken().then(token => { estado.token = token; });
+
+    // Busca as listas (personagens, animais, seleções, dificuldades) do
+    // Firestore — se alguma coleção ainda não existir ou estiver vazia
+    // (ex.: antes de rodar scripts/seed-firestore.js), o padrão fixo do
+    // data.js continua valendo pra ela.
+    window.FirebaseMathGol.carregarConfiguracoes().then(config => {
+      aplicarConfiguracoesRemotas(config);
+    });
   }
 });

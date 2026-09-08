@@ -30,6 +30,29 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Coleções de configuração (uma por lista, pra não misturar tudo numa
+    // coleção só): personagens/animais viram os "nomes engraçados" do
+    // apelido sorteado; selecoes/dificuldades são as opções das telas de
+    // time e nível. O jogo só LÊ essas coleções — quem escreve é o script
+    // scripts/seed-firestore.js, usando o Admin SDK (que não passa pelas
+    // regras abaixo), então não precisa liberar escrita pro cliente.
+    match /personagens/{itemId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /animais/{itemId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /selecoes/{itemId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /dificuldades/{itemId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Nega tudo mais por padrão.
     match /{document=**} {
       allow read, write: if false;

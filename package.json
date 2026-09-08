@@ -5,9 +5,11 @@
   "description": "MathGol — jogo de pênaltis com matemática para crianças do fundamental. Firebase + Vercel.",
   "scripts": {
     "dev": "vercel dev",
-    "test": "node scripts/teste-local.js"
+    "test": "node scripts/teste-local.js",
+    "seed": "node scripts/seed-firestore.js"
   },
   "dependencies": {
+    "dotenv": "^16.4.5",
     "firebase-admin": "^12.6.0"
   },
   "devDependencies": {
