@@ -1,23 +1,49 @@
-// avatar-data.js — categorias de avatar (estilos do DiceBear) usadas na tela
-// de personalização. Cada categoria tem uma lista de "seeds" fixas (não
-// depende do apelido digitado), então a galeria é sempre igual pra qualquer
-// criança navegar entre as opções e escolher a que mais gostar.
+// avatar-data.js - avatares usando EXCLUSIVAMENTE a biblioteca pixel-art
+// do DiceBear (https://api.dicebear.com/9.x/pixel-art/svg).
+// Cada seed gera um rosto diferente. Organizados por categorias tematicas
+// pra facilitar a navegacao da crianca, mas TODOS usam pixel-art.
 
-const CATEGORIAS_AVATAR = [
-  { id: 'thumbs',      nome: 'Mãozinhas',    estilo: 'thumbs',      seeds: ['Bola1', 'Bola2', 'Bola3', 'Bola4'] },
-  { id: 'fun-emoji',   nome: 'Emojis',       estilo: 'fun-emoji',   seeds: ['Bola1', 'Bola2', 'Bola3', 'Bola4'] },
-  { id: 'big-ears',    nome: 'Bichinhos',    estilo: 'big-ears',    seeds: ['Bola1', 'Bola2', 'Bola3', 'Bola4'] },
-  { id: 'bottts',      nome: 'Robôs',        estilo: 'bottts',      seeds: ['Bola1', 'Bola2', 'Bola3', 'Bola4'] },
-  { id: 'croodles',    nome: 'Rabiscados',   estilo: 'croodles',    seeds: ['Bola1', 'Bola2', 'Bola3', 'Bola4'] },
-  { id: 'big-smile',   nome: 'Sorridentes',  estilo: 'big-smile',   seeds: ['Bola1', 'Bola2', 'Bola3', 'Bola4'] },
-  { id: 'pixel-art',   nome: 'Pixel Art',    estilo: 'pixel-art',   seeds: ['Bola1', 'Bola2', 'Bola3', 'Bola4'] },
-  { id: 'notionists',  nome: 'Modernos',     estilo: 'notionists',  seeds: ['Bola1', 'Bola2', 'Bola3', 'Bola4'] },
+var ESTILO_AVATAR = 'pixel-art';
+
+var CATEGORIAS_AVATAR = [
+  {
+    id: 'craques',
+    nome: 'Craques',
+    seeds: ['Neymar','Messi','Ronaldo','Marta','Zidane','Pele','Ronaldinho','Kaka']
+  },
+  {
+    id: 'bichos',
+    nome: 'Bichos',
+    seeds: ['Tigre','Aguia','Onca','Leao','Golfinho','Coruja','Raposa','Panda']
+  },
+  {
+    id: 'herois',
+    nome: 'Herois',
+    seeds: ['Flash','Trovao','Raio','Escudo','Fenix','Cometa','Estrela','Meteoro']
+  },
+  {
+    id: 'diversao',
+    nome: 'Diversao',
+    seeds: ['Pizza','Foguete','Arcoiris','Sorvete','Dinossauro','Unicornio','Pirata','Astronauta']
+  },
+  {
+    id: 'numeros',
+    nome: 'Numeros',
+    seeds: ['Numero7','Numero10','Numero9','Numero1','Numero11','Numero5','Numero3','Numero8']
+  },
+  {
+    id: 'cores',
+    nome: 'Cores',
+    seeds: ['Azul','Verde','Amarelo','Vermelho','Roxo','Laranja','Rosa','Dourado']
+  }
 ];
 
-// Todos os estilos que o front-end pode usar diretamente na API pública do
-// DiceBear (main.js → gerarUrlAvatar()). Não existe mais nenhum
-// endpoint próprio pra isso — a URL é montada direto pro dicebear.com.
-const ESTILOS_AVATAR_PERMITIDOS = CATEGORIAS_AVATAR.map(categoria => categoria.estilo);
+var AVATAR_PADRAO = { seed: 'Pele' };
 
-// Categoria/seed padrão pra quando ainda não existe escolha salva.
-const AVATAR_PADRAO = { estilo: 'thumbs', seed: 'Bola1' };
+// Todas as seeds validas (pra validacao)
+var SEEDS_PERMITIDAS = [];
+CATEGORIAS_AVATAR.forEach(function(cat) {
+  cat.seeds.forEach(function(s) {
+    if (SEEDS_PERMITIDAS.indexOf(s) === -1) SEEDS_PERMITIDAS.push(s);
+  });
+});

@@ -67,12 +67,18 @@ const ANIMAIS = [
 ];
 
 const SELECOES = [
-  { id: 'brasil',    nome: 'Brasil',    corPrimaria: '#2E9E5B', corSecundaria: '#FFC63B' },
-  { id: 'argentina', nome: 'Argentina', corPrimaria: '#6EC1E4', corSecundaria: '#FFFDF6' },
-  { id: 'alemanha',  nome: 'Alemanha',  corPrimaria: '#21303B', corSecundaria: '#E0343B' },
-  { id: 'franca',    nome: 'França',    corPrimaria: '#3A5FCD', corSecundaria: '#E0343B' },
-  { id: 'japao',     nome: 'Japão',     corPrimaria: '#FFFDF6', corSecundaria: '#E0343B' },
-  { id: 'portugal',  nome: 'Portugal',  corPrimaria: '#2E9E5B', corSecundaria: '#E0343B' }
+  { id: 'brasil',     nome: 'Brasil',     bandeira: 'br',     corPrimaria: '#2E9E5B', corSecundaria: '#FFC63B' },
+  { id: 'argentina',  nome: 'Argentina',  bandeira: 'ar',     corPrimaria: '#6EC1E4', corSecundaria: '#FFFDF6' },
+  { id: 'alemanha',   nome: 'Alemanha',   bandeira: 'de',     corPrimaria: '#21303B', corSecundaria: '#E0343B' },
+  { id: 'franca',     nome: 'Franca',     bandeira: 'fr',     corPrimaria: '#3A5FCD', corSecundaria: '#E0343B' },
+  { id: 'japao',      nome: 'Japao',      bandeira: 'jp',     corPrimaria: '#FFFDF6', corSecundaria: '#E0343B' },
+  { id: 'portugal',   nome: 'Portugal',   bandeira: 'pt',     corPrimaria: '#2E9E5B', corSecundaria: '#E0343B' },
+  { id: 'espanha',    nome: 'Espanha',    bandeira: 'es',     corPrimaria: '#E0343B', corSecundaria: '#FFC63B' },
+  { id: 'italia',     nome: 'Italia',     bandeira: 'it',     corPrimaria: '#3A5FCD', corSecundaria: '#FFFDF6' },
+  { id: 'inglaterra', nome: 'Inglaterra', bandeira: 'gb-eng', corPrimaria: '#FFFDF6', corSecundaria: '#E0343B' },
+  { id: 'colombia',   nome: 'Colombia',   bandeira: 'co',     corPrimaria: '#FFC63B', corSecundaria: '#3A5FCD' },
+  { id: 'mexico',     nome: 'Mexico',     bandeira: 'mx',     corPrimaria: '#2E9E5B', corSecundaria: '#FFFDF6' },
+  { id: 'coreia',     nome: 'Coreia',     bandeira: 'kr',     corPrimaria: '#E0343B', corSecundaria: '#3A5FCD' }
 ];
 
 const DIFICULDADES = [

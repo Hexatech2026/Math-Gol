@@ -1,7 +1,7 @@
 /* ==========================================================================
-   MathGol — tokens de design
-   Paleta pensada pro tema (matemática + futebol infantil), não um SaaS:
-   verde-grama, amarelo-sol, azul-céu, branco-giz, grafite.
+   MathGol - tokens de design
+   Paleta pensada pro tema (matematica + futebol infantil), nao um SaaS:
+   verde-grama, amarelo-sol, azul-ceu, branco-giz, grafite.
    ========================================================================== */
 
 :root {
@@ -39,7 +39,7 @@ body.alto-contraste .cartao {
   border-width: 4px !important;
 }
 
-/* Modo espaçamento para dislexia: mais espaço entre letras, palavras e linhas */
+/* Modo espacamento para dislexia: mais espaco entre letras, palavras e linhas */
 body.espaco-dislexia {
   --espaco-letra: 0.04em;
   --interlinha: 1.9;
@@ -69,7 +69,7 @@ body {
   flex-direction: column;
 }
 
-/* Textura de campo bem sutil no fundo de toda a aplicação */
+/* Textura de campo bem sutil no fundo de toda a aplicacao */
 body {
   background-image:
     repeating-linear-gradient(
@@ -105,7 +105,7 @@ body {
   display: flex;
 }
 
-/* ---------- Cabeçalho comum ---------- */
+/* ---------- Cabecalho comum ---------- */
 
 .topo {
   width: 100%;
@@ -153,7 +153,7 @@ body {
   .mascote-grande { animation: none; }
 }
 
-/* ---------- Fundo temático: bola e números boiando ---------- */
+/* ---------- Fundo tematico: bola e numeros boiando ---------- */
 
 .fundo-tematico {
   position: fixed;
@@ -347,7 +347,7 @@ body {
   outline-offset: 3px;
 }
 
-/* ---------- Títulos ---------- */
+/* ---------- Titulos ---------- */
 
 h1, h2, h3 {
   font-family: var(--fonte-titulo);
@@ -381,7 +381,7 @@ h2 { font-size: clamp(1.25rem, 5.5vw, 1.7rem); }
   box-shadow: 0 4px 12px rgba(11,30,61,0.2);
 }
 
-/* ---------- Botões (alvo de toque grande, mínimo ~56px de altura) ---------- */
+/* ---------- Botoes (alvo de toque grande, minimo ~56px de altura) ---------- */
 
 .botao {
   font-family: var(--fonte-titulo);
@@ -454,7 +454,7 @@ h2 { font-size: clamp(1.25rem, 5.5vw, 1.7rem); }
   width: 100%;
 }
 
-/* ---------- Cartões (seleção, dificuldade) ---------- */
+/* ---------- Cartoes (selecao, dificuldade) ---------- */
 
 .grade-cartoes {
   display: grid;
@@ -496,8 +496,8 @@ h2 { font-size: clamp(1.25rem, 5.5vw, 1.7rem); }
   box-shadow: 0 3px 0 rgba(0,0,0,0.15);
 }
 
-/* Cartões de dificuldade ganham uma cor própria pra ficar mais fácil de
-   diferenciar visualmente, sem depender só do texto */
+/* Cartoes de dificuldade ganham uma cor propria pra ficar mais facil de
+   diferenciar visualmente, sem depender so do texto */
 #grade-dificuldades .cartao:nth-child(1) { background: #EAF7EF; border-color: var(--verde-grama-escuro); }
 #grade-dificuldades .cartao:nth-child(2) { background: #E9F6FC; border-color: var(--azul-ceu-escuro); }
 #grade-dificuldades .cartao:nth-child(3) { background: #FFF3DE; border-color: #C97A1A; }
@@ -728,10 +728,10 @@ h2 { font-size: clamp(1.25rem, 5.5vw, 1.7rem); }
 }
 
 .grade-alternativas {
-  display: none; /* mantido apenas por compatibilidade; não é mais usado na Fase 1 */
+  display: none; /* mantido apenas por compatibilidade; nao e mais usado na Fase 1 */
 }
 
-/* ---------- Fase 1: palco do pênalti com as 5 zonas do gol ---------- */
+/* ---------- Fase 1: palco do penalti com as 5 zonas do gol ---------- */
 
 .palco-penalti {
   position: relative;
@@ -920,7 +920,7 @@ h2 { font-size: clamp(1.25rem, 5.5vw, 1.7rem); }
   transform: translateX(24px);
 }
 
-/* Respeita usuários que pedem menos movimento no sistema */
+/* Respeita usuarios que pedem menos movimento no sistema */
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
@@ -928,7 +928,7 @@ h2 { font-size: clamp(1.25rem, 5.5vw, 1.7rem); }
   }
 }
 
-/* ---------- Rodapé com a marca ---------- */
+/* ---------- Rodape com a marca ---------- */
 
 .rodape {
   display: flex;
@@ -958,4 +958,156 @@ h2 { font-size: clamp(1.25rem, 5.5vw, 1.7rem); }
 
 @media (max-width: 380px) {
   .grade-alternativas { grid-template-columns: 1fr; }
+}
+
+/* ---------- Chips de escolha (personagem + animal) ---------- */
+
+.lista-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+  max-height: 140px;
+  overflow-y: auto;
+  padding: 8px 4px;
+  background: rgba(255,253,246,0.08);
+  border-radius: 14px;
+  margin-bottom: 10px;
+}
+
+.chip-escolha {
+  font-family: var(--fonte-titulo);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border: 2px solid rgba(255,253,246,0.4);
+  border-radius: 999px;
+  background: rgba(255,253,246,0.12);
+  color: var(--branco-giz);
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+.chip-escolha:hover {
+  background: rgba(255,253,246,0.25);
+}
+.chip-escolha.chip-ativo {
+  background: var(--amarelo-sol);
+  color: var(--grafite);
+  border-color: var(--amarelo-sol-escuro);
+  box-shadow: 0 3px 0 rgba(0,0,0,0.2);
+}
+
+/* ---------- Timer e pontuacao na barra da Fase 1 ---------- */
+
+.barra-fase {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.timer-display {
+  font-family: var(--fonte-titulo);
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 5px 14px;
+  border-radius: 999px;
+  min-width: 52px;
+  text-align: center;
+}
+.timer-verde    { background: var(--verde-grama); color: var(--branco-giz); }
+.timer-amarelo  { background: var(--amarelo-sol); color: var(--grafite); }
+.timer-vermelho { background: #E0343B; color: var(--branco-giz); animation: pulsar-timer 0.5s ease-in-out infinite; }
+
+@keyframes pulsar-timer {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .timer-vermelho { animation: none; }
+}
+
+.pontuacao-display {
+  font-family: var(--fonte-titulo);
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(255,253,246,0.9);
+  color: var(--grafite);
+}
+
+.pontuacao-resultado {
+  font-family: var(--fonte-titulo);
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: var(--amarelo-sol);
+  text-align: center;
+  margin-bottom: 8px;
+  display: inline-block;
+  background: rgba(255,253,246,0.92);
+  padding: 8px 22px;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(11,30,61,0.2);
+}
+
+/* ---------- Bandeiras reais nas selecoes ---------- */
+
+.cartao-bandeira {
+  width: 64px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 2px solid rgba(33,48,59,0.15);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* ========================================================================
+   Progressao entre fases — cartao bloqueado, estrelas, desbloqueio
+   ======================================================================== */
+
+.cartao-fase {
+  position: relative;
+}
+
+.cartao-bloqueado {
+  opacity: 0.45;
+  pointer-events: none;
+  filter: grayscale(0.6);
+}
+
+.cartao-estrelas {
+  display: block;
+  font-size: 1rem;
+  margin-top: 4px;
+  letter-spacing: 2px;
+}
+
+.mensagem-desbloqueio {
+  font-family: var(--fonte-titulo);
+  font-size: 1.15rem;
+  color: var(--amarelo-sol-escuro);
+  min-height: 1.5em;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.4s, transform 0.4s;
+}
+.mensagem-desbloqueio.visivel {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.titulo-fase {
+  font-family: var(--fonte-titulo);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--branco-giz);
+  background: var(--grafite);
+  padding: 3px 10px;
+  border-radius: 12px;
+  margin-right: 8px;
+  white-space: nowrap;
 }

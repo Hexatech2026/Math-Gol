@@ -113,7 +113,6 @@ async function salvarPerfil(token, dados) {
 
   const perfil = {
     apelido: dados.apelido,
-    avatarEstilo: dados.avatarEstilo,
     avatarSeed: dados.avatarSeed,
     atualizadoEm: serverTimestamp()
   };
