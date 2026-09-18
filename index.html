@@ -122,7 +122,12 @@
 <div id="app">
 
   <div class="topo">
-    <img id="logo-mini" class="marca-logo" src="hexatech-logo.png" alt="HexaTech">
+    <div class="topo-esquerda">
+      <button id="botao-voltar" class="botao-icone botao-voltar" type="button" aria-label="Voltar para a tela anterior">←</button>
+      <button id="botao-logo" class="botao-logo" type="button" aria-label="Voltar ao menu inicial">
+        <img id="logo-mini" class="marca-logo" src="hexatech-logo.png" alt="HexaTech">
+      </button>
+    </div>
     <button id="botao-acessibilidade" class="botao-icone" type="button" aria-label="Abrir opções de acessibilidade">♿</button>
   </div>
 
@@ -197,7 +202,7 @@
       <span id="titulo-fase" class="titulo-fase">⚽ Pênaltis</span>
       <div id="cabecalho-fase" class="cabecalho-fase"></div>
       <span id="timer-display" class="timer-display timer-verde">15s</span>
-      <span id="pontuacao-display" class="pontuacao-display">0 pts</span>
+      <span id="pontuacao-display" class="pontuacao-display">0 <img class="icone-cruzeiro" src="estrela-cruzeiro.png" alt="estrelinhas Cruzeiro"></span>
     </div>
     <div class="caixa-pergunta">
       <p id="pergunta-texto" class="pergunta-texto">--</p>
@@ -218,7 +223,7 @@
   <section id="tela-resultado" class="tela">
     <h2>Fim da Fase 1!</h2>
     <p id="placar-final" class="placar-grande">0 / 3</p>
-    <p id="pontuacao-final" class="pontuacao-resultado">0 pontos</p>
+    <p id="pontuacao-final" class="pontuacao-resultado">0 <img class="icone-cruzeiro" src="estrela-cruzeiro.png" alt="">Cruzeiro</p>
     <p id="resumo-resultado" class="resumo-resultado">--</p>
     <p id="mensagem-desbloqueio" class="mensagem-desbloqueio"></p>
     <div class="pilha-botoes">

@@ -43,11 +43,57 @@ function gerarAvatarFallbackLocal(seed) {
 
 // ---------- Navegacao ----------
 
+// Mapa de "tela anterior" pra cada tela — usado pelo botao de voltar (←).
+// tela-fase1 volta pra escolha de fase (abandona a cobranca atual).
+// tela-resultado tambem volta pra escolha de fase, junto com os botoes
+// dedicados que ja existem la (Escolher fase / Voltar ao menu).
+var TELA_ANTERIOR = {
+  'tela-apelido':    'tela-menu',
+  'tela-selecao':    'tela-apelido',
+  'tela-dificuldade':'tela-selecao',
+  'tela-fases':      'tela-dificuldade',
+  'tela-fase1':      'tela-fases',
+  'tela-resultado':  'tela-fases'
+};
+
 function mostrarTela(idTela) {
   document.querySelectorAll('.tela').forEach(function(t) { t.classList.remove('tela-ativa'); });
   document.getElementById(idTela).classList.add('tela-ativa');
   var logo = document.getElementById('logo-mini');
-  if (logo) logo.classList.toggle('escondido', idTela === 'tela-menu');
+  var botaoVoltar = document.getElementById('botao-voltar');
+  var naTelaPrincipal = idTela === 'tela-menu';
+  if (logo) logo.classList.toggle('escondido', naTelaPrincipal);
+  if (botaoVoltar) botaoVoltar.classList.toggle('escondido', naTelaPrincipal);
+}
+
+// Para o timer e desmonta o jogo Phaser, se estiver rodando — usado sempre
+// que se sai da tela-fase1 sem terminar a cobranca (voltar ou ir ao menu).
+function encerrarJogoEmAndamento() {
+  pararTimer();
+  if (estado.jogoPenalti) { estado.jogoPenalti.destruir(); estado.jogoPenalti = null; }
+}
+
+function voltarTelaAnterior() {
+  var telaAtual = document.querySelector('.tela.tela-ativa');
+  if (!telaAtual) return;
+  var anteriorId = TELA_ANTERIOR[telaAtual.id];
+  if (!anteriorId) return;
+  SFX.clique();
+  if (telaAtual.id === 'tela-fase1') encerrarJogoEmAndamento();
+  mostrarTela(anteriorId);
+}
+
+function sairParaMenu() {
+  encerrarJogoEmAndamento();
+  mostrarTela('tela-menu');
+}
+
+function initNavegacaoTopo() {
+  document.getElementById('botao-voltar').addEventListener('click', voltarTelaAnterior);
+  document.getElementById('botao-logo').addEventListener('click', function() {
+    SFX.clique();
+    sairParaMenu();
+  });
 }
 
 function initMenu() {
@@ -301,7 +347,7 @@ function irParaFases() {
     conteudo += '<span class="cartao-titulo">' + fase.nome + '</span>';
     conteudo += '<span class="cartao-descricao">' + (desbloqueada ? fase.descricao : 'Complete a fase anterior!') + '</span>';
     if (estrelas) conteudo += '<span class="cartao-estrelas">' + estrelas + '</span>';
-    if (melhorPts > 0) conteudo += '<span class="cartao-descricao">Recorde: ' + melhorPts + ' pts</span>';
+    if (melhorPts > 0) conteudo += '<span class="cartao-descricao">Recorde: ' + melhorPts + ' <img class="icone-cruzeiro" src="estrela-cruzeiro.png" alt="">Cruzeiro</span>';
     cartao.innerHTML = conteudo;
 
     cartao.addEventListener('click', function() {
@@ -355,7 +401,7 @@ function iniciarFase1() {
 
   try {
     if (typeof Phaser === 'undefined') throw new Error('Phaser nao carregou');
-    estado.jogoPenalti = criarJogoPenalti('jogo-penalti');
+    estado.jogoPenalti = criarJogoPenalti('jogo-penalti', estado.selecaoId);
   } catch (e) {
     console.warn('Phaser indisponivel:', e);
     estado.jogoPenalti = null;
@@ -485,7 +531,7 @@ function finalizarCobranca(foiGol) {
     estado.gols++;
     estado.pontuacao += pontos;
     estado.resultadosCobrancas.push('gol');
-    document.getElementById('mensagem-feedback').textContent = 'GOOOL! +' + pontos + ' pontos!';
+    document.getElementById('mensagem-feedback').innerHTML = 'GOOOL! +' + pontos + ' <img class="icone-cruzeiro" src="estrela-cruzeiro.png" alt="">Cruzeiro!';
     Narracao.falar('Gol!');
   } else {
     SFX.defesa();
@@ -508,7 +554,7 @@ function finalizarCobranca(foiGol) {
 
 function atualizarDisplayPontuacao() {
   var el = document.getElementById('pontuacao-display');
-  if (el) el.textContent = estado.pontuacao + ' pts';
+  if (el) el.innerHTML = estado.pontuacao + ' <img class="icone-cruzeiro" src="estrela-cruzeiro.png" alt="estrelinhas Cruzeiro">';
 }
 
 // ---------- Resultado ----------
@@ -521,7 +567,7 @@ function irParaResultado() {
   var resultadoProgressao = Progressao.registrarResultado(estado.faseAtual, estado.gols, estado.pontuacao);
 
   document.getElementById('placar-final').textContent = estado.gols + ' / ' + TOTAL_COBRANCAS;
-  document.getElementById('pontuacao-final').textContent = estado.pontuacao + ' pontos';
+  document.getElementById('pontuacao-final').innerHTML = estado.pontuacao + ' <img class="icone-cruzeiro" src="estrela-cruzeiro.png" alt="">Cruzeiro';
 
   var mensagem = sortearMensagemResultado(estado.gols);
   document.getElementById('resumo-resultado').textContent = mensagem;
@@ -567,7 +613,7 @@ function irParaResultado() {
 function initResultado() {
   document.getElementById('botao-voltar-menu').addEventListener('click', function() {
     SFX.clique();
-    mostrarTela('tela-menu');
+    sairParaMenu();
   });
   var botaoProxFase = document.getElementById('botao-proxima-fase');
   if (botaoProxFase) {
@@ -625,6 +671,7 @@ function initAcessibilidade() {
 
 document.addEventListener('DOMContentLoaded', function() {
   initAcessibilidade();
+  initNavegacaoTopo();
   initMenu();
   initApelido();
   initSelecao();

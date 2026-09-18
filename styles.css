@@ -127,6 +127,32 @@ body {
   visibility: hidden;
 }
 
+.topo-esquerda {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.botao-logo {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  border-radius: var(--raio-medio);
+}
+
+.botao-voltar {
+  width: 44px;
+  height: 44px;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+.botao-voltar.escondido {
+  visibility: hidden;
+}
+
 .logo-hero {
   width: min(72%, 280px);
   height: auto;
@@ -342,6 +368,7 @@ body {
 }
 .botao-icone:focus-visible,
 .botao:focus-visible,
+.botao-logo:focus-visible,
 .cartao:focus-visible {
   outline: 4px solid var(--azul-ceu);
   outline-offset: 3px;
@@ -1038,20 +1065,53 @@ h2 { font-size: clamp(1.25rem, 5.5vw, 1.7rem); }
   border-radius: 999px;
   background: rgba(255,253,246,0.9);
   color: var(--grafite);
+  display: inline-flex;
+  align-items: center;
 }
 
 .pontuacao-resultado {
   font-family: var(--fonte-titulo);
   font-weight: 700;
   font-size: 1.3rem;
-  color: var(--amarelo-sol);
+  color: var(--amarelo-sol-escuro);
   text-align: center;
   margin-bottom: 8px;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: rgba(255,253,246,0.92);
   padding: 8px 22px;
   border-radius: 999px;
   box-shadow: 0 4px 12px rgba(11,30,61,0.2);
+}
+
+/* ---------- Icone da estrela Cruzeiro do Sul (substitui "pts"/"pontos") ---------- */
+
+.icone-cruzeiro {
+  height: 1.3em;
+  width: auto;
+  vertical-align: -0.2em;
+  margin: 0 5px;
+}
+
+/* Contador ao vivo (barra do jogo): so numero + icone, mais compacto */
+.pontuacao-display .icone-cruzeiro {
+  height: 1.15em;
+  margin: 0 0 0 5px;
+}
+
+/* Mensagem de gol e recorde nos cartoes de fase: icone um pouco maior */
+.mensagem-feedback .icone-cruzeiro {
+  height: 1.2em;
+}
+
+.pontuacao-resultado .icone-cruzeiro {
+  height: 1.5em;
+}
+
+.cartao-descricao .icone-cruzeiro {
+  height: 1.1em;
+  margin: 0 3px;
 }
 
 /* ---------- Bandeiras reais nas selecoes ---------- */

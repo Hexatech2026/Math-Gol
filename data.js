@@ -41,10 +41,15 @@ let DIFICULDADES = [
 
 function aplicarConfiguracoesRemotas(config) {
   if (!config) return;
-  if (Array.isArray(config.personagens) && config.personagens.length) PERSONAGENS = config.personagens;
-  if (Array.isArray(config.animais) && config.animais.length) ANIMAIS = config.animais;
-  if (Array.isArray(config.selecoes) && config.selecoes.length) SELECOES = config.selecoes;
-  if (Array.isArray(config.dificuldades) && config.dificuldades.length) DIFICULDADES = config.dificuldades;
+  // So aceita a lista remota se ela tiver pelo menos tantos itens quanto a
+  // lista local. Evita que um Firestore desatualizado/parcial (ex.: seed
+  // antigo, com menos paises do que o jogo tem hoje) apague opcoes que ja
+  // existem no codigo — a lista so cresce/atualiza, nunca encolhe por causa
+  // de dados remotos incompletos.
+  if (Array.isArray(config.personagens) && config.personagens.length >= PERSONAGENS.length) PERSONAGENS = config.personagens;
+  if (Array.isArray(config.animais) && config.animais.length >= ANIMAIS.length) ANIMAIS = config.animais;
+  if (Array.isArray(config.selecoes) && config.selecoes.length >= SELECOES.length) SELECOES = config.selecoes;
+  if (Array.isArray(config.dificuldades) && config.dificuldades.length >= DIFICULDADES.length) DIFICULDADES = config.dificuldades;
 }
 
 const MENSAGENS_RESULTADO = {
