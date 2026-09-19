@@ -1171,58 +1171,74 @@ h2 { font-size: clamp(1.25rem, 5.5vw, 1.7rem); }
   margin-right: 8px;
   white-space: nowrap;
 }
-/* ---------- HU-17: Torcida animada (dentro do palco do pênalti) ---------- */
+
+/* ========================================================================
+   ---------- HU-17: Torcida animada (dentro do palco do pênalti) ---------- 
+   ======================================================================== */
 /* Fica por cima do canvas do Phaser, encostada no topo — como se fosse a
    arquibancada atrás do gol. Só existe dentro de .palco-penalti (fase 1),
    então some sozinha quando o jogador sai dessa tela. */
 #stadium-crowd {
   position: absolute;
   inset: 0 0 auto 0;
-  height: 12%;
-  min-height: 20px;
-  background: #1c2b3a;
+  height: 18%; /* Ajustado para caber os bonequinhos com cabeca */
+  min-height: 35px;
+  background: linear-gradient(to top, #1c2b3a, transparent);
   display: flex;
   flex-wrap: wrap;
-  align-content: flex-start;
+  align-content: flex-end; /* Bonecos ficam agrupados na base da arquibancada */
   justify-content: center;
-  gap: 2px;
-  padding: 3px 4px;
+  gap: 4px;
+  padding: 6px 8px;
   overflow: hidden;
   border-radius: var(--raio-grande) var(--raio-grande) 0 0;
   pointer-events: none; /* nao pode atrapalhar o clique nos botoes de zona */
 }
 
-.fan {
-  width: 5px;
-  height: 5px;
+/* O corpo do bonequinho (fazendinha) */
+.torcedor {
+  width: 10px;
+  height: 16px;
+  border-radius: 3px 3px 0 0; 
+  position: relative;
+  animation: puloTorcida 2s infinite alternate ease-in-out;
+  transform-origin: bottom center;
+}
+
+/* A cabeça do bonequinho */
+.torcedor::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 1px;
+  width: 8px;
+  height: 8px;
+  background-color: #E8B98C; /* Cor da pele, combinando com o goleiro no Phaser */
   border-radius: 50%;
-  margin: 2px;
-  animation: idleCrowd 2s infinite alternate;
 }
 
-/* Estados da torcida */
-.cheering .fan {
-  animation: jumpCheer 0.4s infinite alternate;
-  background-color: #ffd700 !important; /* Brilho amarelo/ouro no gol */
-  transform: scale(1.5);
+/* Estados de reação da torcida (controlados pelo game.js) */
+.comemorando .torcedor {
+  animation: golTorcida 0.4s infinite alternate !important;
+  background-color: var(--branco-giz) !important;
 }
 
-.disappointed .fan {
-  animation: sitDown 1s forwards;
+.lamentando .torcedor {
+  animation: erroTorcida 1s forwards !important;
   opacity: 0.5;
 }
 
-@keyframes idleCrowd {
+@keyframes puloTorcida {
   0% { transform: translateY(0); }
-  100% { transform: translateY(-2px); }
+  100% { transform: translateY(-3px); }
 }
 
-@keyframes jumpCheer {
+@keyframes golTorcida {
   0% { transform: translateY(0) scale(1); }
-  100% { transform: translateY(-10px) scale(1.5); }
+  100% { transform: translateY(-10px) scale(1.15); }
 }
 
-@keyframes sitDown {
+@keyframes erroTorcida {
   0% { transform: translateY(0) scale(1); }
-  100% { transform: translateY(6px) scale(0.85); }
+  100% { transform: translateY(8px) scale(0.9); }
 }
