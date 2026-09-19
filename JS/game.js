@@ -56,11 +56,11 @@ function initCrowd() {
   const CORES_TORCIDA = ['#e0343b', '#3a5fcd', '#fffdf6', '#2e9e5b', '#ffc63b'];
 
   for (let i = 0; i < NUMERO_DE_TORCEDORES; i++) {
-    const fan = document.createElement('div');
-    fan.className = 'fan';
-    fan.style.backgroundColor = CORES_TORCIDA[Math.floor(Math.random() * CORES_TORCIDA.length)];
-    fan.style.animationDelay = (Math.random() * 2) + 's';
-    crowdContainer.appendChild(fan);
+    const torcedor = document.createElement('div');
+    torcedor.className = 'torcedor'; // Nova classe do bonequinho estilo fazendinha
+    torcedor.style.backgroundColor = CORES_TORCIDA[Math.floor(Math.random() * CORES_TORCIDA.length)];
+    torcedor.style.animationDelay = (Math.random() * 2) + 's';
+    crowdContainer.appendChild(torcedor);
   }
 }
 
@@ -71,16 +71,17 @@ function reacaoTorcida(resultado) {
   const crowdContainer = document.getElementById('stadium-crowd');
   if (!crowdContainer) return;
 
-  crowdContainer.classList.remove('cheering', 'disappointed');
+  crowdContainer.classList.remove('comemorando', 'lamentando');
+  
   if (resultado === 'gol') {
-    crowdContainer.classList.add('cheering');
+    crowdContainer.classList.add('comemorando');
   } else if (resultado === 'erro') {
-    crowdContainer.classList.add('disappointed');
+    crowdContainer.classList.add('lamentando');
   }
 
   clearTimeout(reacaoTorcidaTimeoutId);
   reacaoTorcidaTimeoutId = setTimeout(function() {
-    crowdContainer.classList.remove('cheering', 'disappointed');
+    crowdContainer.classList.remove('comemorando', 'lamentando');
   }, 3000);
 }
 
