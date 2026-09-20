@@ -39,19 +39,23 @@ const GOLEIRO_BASE = { x: 0, y: 1.2, z: 0.3 }; // centro do tronco
 const ALCANCE_MAOS = 0.95; // do centro do tronco até as mãos, com braços para cima
 
 // Ritmo da animação (ms). Tudo passa por d() para respeitar prefers-reduced-motion.
+// Valores calibrados para a animação ser claramente perceptível (não instantânea)
+// e ao mesmo tempo manter o ritmo de jogo fluido.
 const TEMPO = {
-  CORRIDA: 380,
-  PERNA_TRAS: 200,
-  PERNA_FRENTE: 220,
-  PERNA_VOLTA: 320,
-  VOO_BOLA: 950,
+  CORRIDA: 620,           // batedor caminha até a marca (antes: 380)
+  PERNA_TRAS: 340,        // batedor arma o chute (antes: 200)
+  PERNA_FRENTE: 360,      // perna desce até encostar na bola (antes: 220)
+  PERNA_VOLTA: 440,       // pé volta à posição de descanso (antes: 320)
+  VOO_BOLA: 1400,         // bola da marca do pênalti até a zona (antes: 950)
   GIRO_BOLA: 6 * Math.PI,
-  MERGULHO_GOLEIRO: 780,
-  IMPACTO_DEFESA: 200,
-  BOLA_NA_REDE: 320,
-  REBOTE: 350,
-  VIBRACAO_REDE: 220,
-  ANTES_DE_RESETAR: 1500
+  MERGULHO_GOLEIRO: 1150, // goleiro chega um pouco antes da bola (antes: 780)
+  IMPACTO_DEFESA: 300,    // impacto da defesa (antes: 200)
+  BOLA_NA_REDE: 480,      // a bola afunda na rede depois do gol (antes: 320)
+  REBOTE: 500,            // rebote na defesa (antes: 350)
+  VIBRACAO_REDE: 360,     // rede balança (antes: 220)
+  COMEMORA_TORCIDA: 2200, // torcida vibra no gol (novo)
+  LAMENTA_TORCIDA: 800,   // torcida lamenta na defesa (novo)
+  ANTES_DE_RESETAR: 2200  // pausa antes de resetar (antes: 1500)
 };
 
 const CAMISA_PRIMARIA_PADRAO = 0x3a5fcd;
@@ -272,6 +276,37 @@ function criarJogoPenalti(containerId, selecaoId) {
   const sombraGoleiro = criarSombra(0.5);
   cena.add(goleiro, sombraGoleiro);
 
+  // ---------- Alto contraste: ajusta cores 3D para o goleiro não sumir ----------
+  function aplicarAltoContraste() {
+    var ativo = document.body.classList.contains('alto-contraste');
+    if (ativo) {
+      // Goleiro com camisa bem clara para contrastar com o fundo escuro
+      goleiroObj.raiz.traverse(function(child) {
+        if (child.isMesh && child.material) {
+          // Camisa escura (0x21303b) → amarelo forte para destaque
+          if (child.material.color && child.material.color.getHex() === 0x21303b) {
+            child.material.color.setHex(0xff8800);
+          }
+          // Detalhes dourados (0xffc63b) → branco para contraste
+          if (child.material.color && child.material.color.getHex() === 0xffc63b) {
+            child.material.color.setHex(0xffffff);
+          }
+        }
+      });
+      // Fundo do cenário mais claro
+      cena.background = new THREE.Color(0x4a7fbf);
+    }
+  }
+  aplicarAltoContraste();
+
+  // Observa mudanças no alto-contraste (toggle do usuário durante o jogo)
+  var observadorContraste = new MutationObserver(function(mutations) {
+    mutations.forEach(function(m) {
+      if (m.attributeName === 'class') aplicarAltoContraste();
+    });
+  });
+  observadorContraste.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
   // ---------- Bola (esfera branca + 12 "gomos" escuros) ----------
   const bola = new THREE.Group();
   const bolaMalha = new THREE.Group();
@@ -347,11 +382,115 @@ function criarJogoPenalti(containerId, selecaoId) {
   }
   resetar();
 
+  // --- Torcida vibra forte no gol: onda que sobe e desce várias vezes ---
   function comemorarTorcida() {
-    animar(d(160 * 6), function(e, u) { offTorcida = Math.abs(Math.sin(u * Math.PI * 3)) * 0.35; }, function() { offTorcida = 0; });
+    // Onda de pulo intensa — 5 saltos com amplitude decrescente
+    animar(d(TEMPO.COMEMORA_TORCIDA), function(e, u) {
+      var onda = Math.sin(u * Math.PI * 5);
+      var envelope = 1 - u * 0.6; // amplitude diminui gradualmente
+      offTorcida = Math.abs(onda) * 0.55 * envelope;
+    }, function() { offTorcida = 0; });
+
+    // Efeito visual: as cores da torcida "piscam" (brilho extra)
+    var corOriginal = new THREE.Color();
+    var corBrilho = new THREE.Color();
+    animar(d(TEMPO.COMEMORA_TORCIDA * 0.7), function(e, u) {
+      var pulso = Math.abs(Math.sin(u * Math.PI * 4));
+      for (var i = 0; i < LINHAS * COLUNAS; i++) {
+        cabecas.getColorAt(i, corOriginal);
+        corBrilho.copy(corOriginal).lerp(new THREE.Color(0xffffff), pulso * 0.35);
+        cabecas.setColorAt(i, corBrilho);
+        corpos.setColorAt(i, corBrilho);
+      }
+      cabecas.instanceColor.needsUpdate = true;
+      corpos.instanceColor.needsUpdate = true;
+    }, function() {
+      // Restaura as cores originais
+      var idx2 = 0;
+      var corTmp2 = new THREE.Color();
+      for (var r = 0; r < LINHAS; r++) {
+        for (var c = 0; c < COLUNAS; c++) {
+          corTmp2.setHex(CORES_TORCIDA[(c * 3 + r) % CORES_TORCIDA.length]);
+          cabecas.setColorAt(idx2, corTmp2);
+          corpos.setColorAt(idx2, corTmp2);
+          idx2++;
+        }
+      }
+      cabecas.instanceColor.needsUpdate = true;
+      corpos.instanceColor.needsUpdate = true;
+    });
   }
+
+  // --- Torcida lamenta suavemente na defesa ---
   function lamentarTorcida() {
-    animar(d(440), function(e, u) { offTorcida = -Math.sin(u * Math.PI) * 0.18; }, function() { offTorcida = 0; });
+    animar(d(TEMPO.LAMENTA_TORCIDA), function(e, u) {
+      offTorcida = -Math.sin(u * Math.PI) * 0.22;
+    }, function() { offTorcida = 0; });
+  }
+
+  // --- Animação de incentivo positivo (texto 3D flutuante no erro) ---
+  var textoIncentivo = null;
+  var FRASES_INCENTIVO = [
+    'Quase! Tenta de novo!',
+    'Boa tentativa!',
+    'Não desista!',
+    'Você consegue!',
+    'Continue tentando!',
+    'Foi por pouco!',
+    'Na próxima vai!'
+  ];
+
+  function mostrarIncentivo() {
+    // Remove texto anterior se existir
+    if (textoIncentivo) { cena.remove(textoIncentivo); textoIncentivo = null; }
+
+    var frase = FRASES_INCENTIVO[Math.floor(Math.random() * FRASES_INCENTIVO.length)];
+
+    // Cria um sprite com canvas 2D para o texto
+    var canvas2d = document.createElement('canvas');
+    canvas2d.width = 512; canvas2d.height = 128;
+    var ctx = canvas2d.getContext('2d');
+    ctx.clearRect(0, 0, 512, 128);
+
+    // Fundo arredondado semi-transparente
+    ctx.fillStyle = 'rgba(255, 198, 59, 0.92)';
+    ctx.beginPath();
+    ctx.roundRect(16, 16, 480, 96, 24);
+    ctx.fill();
+    ctx.strokeStyle = '#21303B';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Texto
+    ctx.fillStyle = '#21303B';
+    ctx.font = 'bold 38px Fredoka, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(frase, 256, 64);
+
+    var textura = new THREE.CanvasTexture(canvas2d);
+    var matSprite = new THREE.SpriteMaterial({ map: textura, transparent: true, opacity: 0 });
+    textoIncentivo = new THREE.Sprite(matSprite);
+    textoIncentivo.scale.set(8, 2, 1);
+    textoIncentivo.position.set(0, 4, 5);
+    cena.add(textoIncentivo);
+
+    // Animação: aparece subindo, fica, e desaparece
+    animar(d(400), function(e) {
+      textoIncentivo.material.opacity = e;
+      textoIncentivo.position.y = 3.5 + 1.5 * e;
+    }, function() {
+      // Fica visível por um momento
+      animar(d(900), null, function() {
+        // Depois desaparece subindo
+        animar(d(500), function(e) {
+          textoIncentivo.material.opacity = 1 - e;
+          textoIncentivo.position.y = 5 + 1.2 * e;
+        }, function() {
+          if (textoIncentivo) { cena.remove(textoIncentivo); textoIncentivo = null; }
+        }, { ease: EASE.sineOut });
+      });
+    }, { ease: EASE.sineOut });
   }
 
   // ---------- Botões de zona sobre o canvas ----------
@@ -480,6 +619,7 @@ function criarJogoPenalti(containerId, selecaoId) {
       }, function() {
         if (!correta) { // impacto da defesa: o goleiro "encolhe" ao segurar a bola
           pulso(TEMPO.IMPACTO_DEFESA, function(s) { goleiro.scale.set(1 + 0.12 * s, 1 - 0.15 * s, 1); });
+          mostrarIncentivo();
         }
       }, { ease: EASE.sineOut });
 
@@ -526,6 +666,7 @@ function criarJogoPenalti(containerId, selecaoId) {
     cancelAnimationFrame(rafId);
     tweens.length = 0;
     if (observador) observador.disconnect(); else window.removeEventListener('resize', ajustarTamanho);
+    if (observadorContraste) observadorContraste.disconnect();
     Object.keys(ZONAS).forEach(function(id) { // devolve as posições dos botões ao CSS
       const botao = document.querySelector('.botao-zona[data-zona="' + id + '"]');
       if (botao) { botao.style.left = ''; botao.style.top = ''; }
