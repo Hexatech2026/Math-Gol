@@ -1,395 +1,541 @@
-// game.js — cena Phaser 3 do pênalti. Cada zona do gol corresponde a uma
-// alternativa da pergunta (ver main.js e o overlay de botões em
-// #zonas-gol no HTML). Chutar em uma zona É responder a pergunta:
-// zona certa = gol, zona errada = o goleiro defende ali mesmo.
+// game.js — cena 3D do pênalti (Three.js r149, build UMD via CDN).
 //
-// As coordenadas aqui (ZONAS) precisam bater com as porcentagens usadas
-// nos botões .botao-zona do CSS — os dois lados representam a mesma grade
-// de 640x360.
+// Contrato com o main.js (inalterado em relação à versão Phaser):
+//   criarJogoPenalti(containerId, selecaoId) -> { chutar(zonaId, correta, aoFinalizar), destruir() }
+// Cada zona do gol é uma alternativa da pergunta: zona certa = gol (o goleiro
+// pula para OUTRA zona); zona errada = o goleiro pula exatamente na zona
+// chutada e defende. Sem sorteio de resultado.
 //
-// HU-12 (animação de pênalti): tweens do goleiro/bola + giro da bola e
-// pequenos efeitos de impacto (rede no gol, goleiro na defesa), com uma
-// leve variação de escala na bola em voo pra sugerir profundidade.
-// HU-17 (torcida animada): arquibancada com balanço contínuo, comemoração
-// no gol e lamento na defesa/tempo esgotado; respeita prefers-reduced-motion.
-// HU-18 (personagem para o chute): batedor atrás da bola que "chuta" antes
-// da bola sair do lugar, vestindo a camisa da seleção escolhida (HU-16).
+// Diferença importante: os botões .botao-zona (HTML) ficam por cima do canvas.
+// Como agora a câmera é 3D, as posições left/top desses botões são calculadas
+// projetando cada zona do gol na tela (posicionarBotoes) e aplicadas como
+// estilo inline — por isso os percentuais do CSS deixam de mandar enquanto o
+// jogo está montado (destruir() devolve o controle ao CSS).
 //
-// prefers-reduced-motion: a torcida (idle) já ficava parada; agora as
-// animações "de ação" (perna do batedor, mergulho do goleiro, trajetória e
-// giro da bola, vibração da rede) também usam duração praticamente zero
-// quando o usuário pede menos movimento — a lógica e a ordem dos eventos
-// (contato -> resultado -> finalização) continuam as mesmas, só o efeito
-// visual contínuo é removido.
+// Mantido da versão 2D: camisa da seleção (HU-16), chute só sai quando o pé
+// encosta na bola (HU-18), som do chute no contato (HU-09), torcida reagindo
+// (HU-17), e prefers-reduced-motion (animações praticamente instantâneas, com a
+// mesma ordem de eventos).
+//
+// Unidades: metros. Eixo x = lateral (negativo = esquerda da tela), y = altura,
+// z = profundidade (gol em z=0, marca do pênalti em z=11, câmera atrás).
 
-const LARGURA_JOGO = 640;
-const ALTURA_JOGO = 360;
+const ALTURA_BOLA = 0.22; // raio da bola (maior que a real, para ler bem na tela)
 
+// Pontos do plano do gol (z=0) que cada alternativa representa.
 const ZONAS = {
-  'topo-esquerda':   { x: 230, y: 55 },
-  'topo-direita':    { x: 410, y: 55 },
-  'meio':            { x: 320, y: 80 },
-  'baixo-esquerda':  { x: 230, y: 110 },
-  'baixo-direita':   { x: 410, y: 110 }
+  'topo-esquerda':  { x: -2.5, y: 2.0 },
+  'topo-direita':   { x:  2.5, y: 2.0 },
+  'meio':           { x:  0,   y: 1.3 },
+  'baixo-esquerda': { x: -2.5, y: 0.55 },
+  'baixo-direita':  { x:  2.5, y: 0.55 }
 };
 
-// ---------------------------------------------------------------------------
-// Ritmo da animação do pênalti (ms).
-// A versão anterior resolvia a jogada inteira em ~700ms: a criança clicava e
-// o resultado já estava na tela, sem tempo de ver o jogador chutar nem a bola
-// entrar. Aqui a sequência foi alongada para ~1,4s e dividida em momentos
-// legíveis: preparação -> contato -> voo da bola -> bola entrando na rede.
-// Todos esses valores passam por d(), então em prefers-reduced-motion
-// continuam praticamente instantâneos e a ordem dos eventos não muda.
-// ---------------------------------------------------------------------------
+const CAMERA = { fov: 34, pos: [1.2, 4.4, 19], alvo: [0, -1.5, 0] };
+const PONTO_BOLA = { x: 0, y: ALTURA_BOLA, z: 11 };
+const INICIO_BATEDOR = { x: -1.0, z: 13.4 };
+const PLANTIO_BATEDOR = { x: -0.3, z: 11.55 };
+const GOLEIRO_BASE = { x: 0, y: 1.2, z: 0.3 }; // centro do tronco
+const ALCANCE_MAOS = 0.95; // do centro do tronco até as mãos, com braços para cima
+
+// Ritmo da animação (ms). Tudo passa por d() para respeitar prefers-reduced-motion.
 const TEMPO = {
-  PERNA_TRAS: 200,      // batedor arma o chute (antes: 90)
-  PERNA_FRENTE: 220,    // perna desce até encostar na bola (antes: 130)
-  PERNA_VOLTA: 320,     // pé volta à posição de descanso
-  VOO_BOLA: 950,        // bola da marca do pênalti até a zona (antes: 480)
-  GIRO_BOLA: 1080,      // graus de giro durante o voo
-  MERGULHO_GOLEIRO: 780,// goleiro chega um pouco antes da bola (antes: 420)
+  CORRIDA: 380,
+  PERNA_TRAS: 200,
+  PERNA_FRENTE: 220,
+  PERNA_VOLTA: 320,
+  VOO_BOLA: 950,
+  GIRO_BOLA: 6 * Math.PI,
+  MERGULHO_GOLEIRO: 780,
   IMPACTO_DEFESA: 200,
-  BOLA_NA_REDE: 260,    // a bola afunda na rede depois do gol
+  BOLA_NA_REDE: 320,
+  REBOTE: 350,
   VIBRACAO_REDE: 220,
   ANTES_DE_RESETAR: 1500
 };
 
-const POSICAO_INICIAL_BOLA = { x: 320, y: 300 };
-const POSICAO_INICIAL_GOLEIRO = ZONAS.meio;
-const POSICAO_INICIAL_BATEDOR = { x: 270, y: 322 };
-
 const CAMISA_PRIMARIA_PADRAO = 0x3a5fcd;
 const CAMISA_SECUNDARIA_PADRAO = 0xfffdf6;
+const CORES_TORCIDA = [0xe0343b, 0xffc63b, 0x3a5fcd, 0xfffdf6, 0x2e9e5b];
 
-// Converte "#RRGGBB" em número hex do Phaser. Retorna o fallback se o
-// valor for invalido/ausente — nunca lança erro (mesma logica de
-// tolerancia a dados incompletos usada em data.js).
+// Converte "#RRGGBB" em número hex. Retorna o fallback se o valor for
+// inválido/ausente — nunca lança erro.
 function corHexParaNumero(hex, fallback) {
   if (typeof hex !== 'string') return fallback;
   const numero = parseInt(hex.replace('#', ''), 16);
   return isNaN(numero) ? fallback : numero;
 }
 
+const EASE = {
+  linear: function(u) { return u; },
+  sineOut: function(u) { return Math.sin(u * Math.PI / 2); },
+  quadOut: function(u) { return 1 - (1 - u) * (1 - u); },
+  cubicIn: function(u) { return u * u * u; }
+};
+
 function criarJogoPenalti(containerId, selecaoId) {
-  let cena = null;
-  let bola = null;
-  let goleiro = null;
-  let rede = null;
-  let batedor = null;
-  let quadrilChute = null;
-  let torcida = null;
-  let tweenIdleTorcida = null;
-  let emAnimacao = false;
+  const container = document.getElementById(containerId);
+  if (!container) throw new Error('Container do jogo nao encontrado: ' + containerId);
 
   const reduzMovimento = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  function d(duracaoNormal) { return reduzMovimento ? 1 : duracaoNormal; }
 
-  // Duração efetiva de uma animação de ação: quase instantânea (mas ainda
-  // assíncrona, pra não quebrar a cadeia de onComplete) quando o usuário
-  // pediu menos movimento; a duração normal caso contrário.
-  function d(duracaoNormal) {
-    return reduzMovimento ? 1 : duracaoNormal;
-  }
-
-  // Seleção escolhida (HU-02/HU-16) define a camisa do batedor. Se a
-  // seleção não for encontrada, usa uma camisa neutra sem erro (CA-16.7).
+  // Seleção escolhida define a camisa do batedor; sem seleção, camisa neutra.
   let selecaoEscolhida = null;
   if (typeof SELECOES !== 'undefined' && Array.isArray(SELECOES)) {
     selecaoEscolhida = SELECOES.find(function(s) { return s.id === selecaoId; }) || null;
   }
-  const corCamisaPrimaria = corHexParaNumero(selecaoEscolhida && selecaoEscolhida.corPrimaria, CAMISA_PRIMARIA_PADRAO);
-  const corCamisaSecundaria = corHexParaNumero(selecaoEscolhida && selecaoEscolhida.corSecundaria, CAMISA_SECUNDARIA_PADRAO);
+  const corPrimaria = corHexParaNumero(selecaoEscolhida && selecaoEscolhida.corPrimaria, CAMISA_PRIMARIA_PADRAO);
+  const corSecundaria = corHexParaNumero(selecaoEscolhida && selecaoEscolhida.corSecundaria, CAMISA_SECUNDARIA_PADRAO);
 
-  // Funções de reação da torcida — atribuídas dentro de create(), chamadas
-  // a partir de chutar(). Ficam aqui embaixo para o closure de chutar()
-  // enxergar a versão mais recente.
-  let comemorarTorcida = function() {};
-  let lamentarTorcida = function() {};
+  // Lança se o navegador não tiver WebGL — o main.js já trata (jogo sem cena).
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  container.appendChild(renderer.domElement);
 
-  class CenaPenalti extends Phaser.Scene {
-    constructor() {
-      super('CenaPenalti');
-    }
+  const cena = new THREE.Scene();
+  cena.background = new THREE.Color(0x8ecae6);
+  const camera = new THREE.PerspectiveCamera(CAMERA.fov, 16 / 9, 0.1, 200);
+  camera.position.set(CAMERA.pos[0], CAMERA.pos[1], CAMERA.pos[2]);
+  camera.lookAt(CAMERA.alvo[0], CAMERA.alvo[1], CAMERA.alvo[2]);
 
-    create() {
-      cena = this;
+  cena.add(new THREE.HemisphereLight(0xffffff, 0x3f8f5a, 1.0));
+  const sol = new THREE.DirectionalLight(0xffffff, 0.55);
+  sol.position.set(6, 12, 10);
+  cena.add(sol);
 
-      // Campo
-      this.add.rectangle(LARGURA_JOGO / 2, ALTURA_JOGO / 2, LARGURA_JOGO, ALTURA_JOGO, 0x2e9e5b);
-      for (let i = 0; i < 5; i++) {
-        this.add.rectangle(LARGURA_JOGO / 2, 40 + i * 70, LARGURA_JOGO, 6, 0x000000, 0.05);
-      }
+  const mat = function(cor) { return new THREE.MeshLambertMaterial({ color: cor }); };
 
-      // ---------- HU-17: Torcida animada (arquibancada atrás do gol) ----------
-      const elementosTorcida = [];
-      elementosTorcida.push(this.add.rectangle(LARGURA_JOGO / 2, 9, LARGURA_JOGO, 20, 0x1c2b3a, 1));
-      const CORES_TORCIDA = [0xe0343b, 0xffc63b, 0x3a5fcd, 0xfffdf6, 0x2e9e5b];
-      for (let i = 0; i < 46; i++) {
-        const x = 6 + i * 14;
-        elementosTorcida.push(this.add.circle(x, 5, 2.6, CORES_TORCIDA[i % CORES_TORCIDA.length]));
-        if (i % 2 === 0) {
-          elementosTorcida.push(this.add.circle(x + 7, 13, 2.6, CORES_TORCIDA[(i + 2) % CORES_TORCIDA.length]));
-        }
-      }
-      torcida = this.add.container(0, 0, elementosTorcida);
+  // ---------- Campo ----------
+  for (let i = 0; i < 14; i++) {
+    const faixa = new THREE.Mesh(new THREE.PlaneGeometry(60, 3), mat(i % 2 ? 0x2a9455 : 0x2e9e5b));
+    faixa.rotation.x = -Math.PI / 2;
+    faixa.position.set(0, 0, -7.5 + i * 3);
+    cena.add(faixa);
+  }
+  const matLinha = new THREE.MeshBasicMaterial({ color: 0xfffdf6 });
+  function linha(x, z, largura, comprimento) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(largura, comprimento), matLinha);
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(x, 0.015, z);
+    cena.add(m);
+  }
+  linha(0, 0, 40, 0.14);            // linha de fundo
+  linha(0, 5.5, 18.32, 0.14);       // pequena área
+  linha(-9.16, 2.75, 0.14, 5.5);
+  linha(9.16, 2.75, 0.14, 5.5);
+  linha(0, 16.5, 40.32, 0.14);      // grande área
+  const marca = new THREE.Mesh(new THREE.CircleGeometry(0.14, 16), matLinha);
+  marca.rotation.x = -Math.PI / 2;
+  marca.position.set(0, 0.016, PONTO_BOLA.z);
+  cena.add(marca);
 
-      // Trave (gol) — de x160 a x480, y20 a y140
-      const golX = LARGURA_JOGO / 2;
-      const golY = 80;
-      this.add.rectangle(golX, golY, 320, 120, 0xfffdf6, 0.12).setStrokeStyle(6, 0xfffdf6);
-
-      // Rede
-      rede = this.add.graphics();
-      rede.lineStyle(1, 0xfffdf6, 0.4);
-      for (let x = golX - 160; x <= golX + 160; x += 20) {
-        rede.lineBetween(x, golY - 60, x, golY + 60);
-      }
-      for (let y = golY - 60; y <= golY + 60; y += 15) {
-        rede.lineBetween(golX - 160, y, golX + 160, y);
-      }
-      rede.setPosition(0, 0);
-
-      // Marca do pênalti
-      this.add.circle(POSICAO_INICIAL_BOLA.x, POSICAO_INICIAL_BOLA.y, 4, 0xfffdf6);
-
-      // Goleiro
-      goleiro = this.add.container(POSICAO_INICIAL_GOLEIRO.x, POSICAO_INICIAL_GOLEIRO.y);
-      const corpoGoleiro = this.add.rectangle(0, 0, 34, 46, 0x21303b, 1).setStrokeStyle(3, 0xfffdf6);
-      const cabecaGoleiro = this.add.circle(0, -32, 14, 0xe8b98c);
-      goleiro.add([corpoGoleiro, cabecaGoleiro]);
-
-      // ---------- HU-18: Personagem batedor (veste a camisa da seleção) ----------
-      // Fica mais perto da "câmera" que o goleiro, então é desenhado maior.
-      batedor = this.add.container(POSICAO_INICIAL_BATEDOR.x, POSICAO_INICIAL_BATEDOR.y);
-      const pernaApoio = this.add.rectangle(6, 10, 9, 22, 0xe8b98c).setOrigin(0.5, 0);
-      quadrilChute = this.add.container(-6, 8);
-      const pernaChute = this.add.rectangle(0, 0, 9, 22, 0xe8b98c).setOrigin(0.5, 0);
-      quadrilChute.add(pernaChute);
-      const calcao = this.add.rectangle(0, 2, 28, 10, corCamisaSecundaria).setOrigin(0.5, 0);
-      const corpoBatedor = this.add.rectangle(0, -18, 26, 30, corCamisaPrimaria, 1).setStrokeStyle(2, corCamisaSecundaria);
-      const cabecaBatedor = this.add.circle(0, -38, 10, 0xe8b98c);
-      batedor.add([pernaApoio, quadrilChute, calcao, corpoBatedor, cabecaBatedor]);
-
-      // Bola — um container com uma marca escura fora do centro, para o
-      // giro em voo (HU-12) ficar visível em vez de invisível numa bola lisa.
-      bola = this.add.container(POSICAO_INICIAL_BOLA.x, POSICAO_INICIAL_BOLA.y);
-      const baseBola = this.add.circle(0, 0, 12, 0xfffdf6).setStrokeStyle(2, 0x21303b);
-      const marcaBola = this.add.circle(4, -4, 3, 0x21303b);
-      bola.add([baseBola, marcaBola]);
-
-      // Balanço contínuo e leve da torcida (CA-17.2). Em prefers-reduced-motion
-      // a torcida fica parada, só reagindo (bem discretamente) a gol/defesa.
-      if (!reduzMovimento) {
-        tweenIdleTorcida = this.tweens.add({
-          targets: torcida,
-          y: -3,
-          duration: 700,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
-      }
-
-      comemorarTorcida = function() {
-        if (!torcida || !cena) return;
-        if (tweenIdleTorcida) tweenIdleTorcida.pause();
-        cena.tweens.add({
-          targets: torcida,
-          y: -10,
-          scaleY: 1.15,
-          duration: reduzMovimento ? 0 : 160,
-          yoyo: true,
-          repeat: reduzMovimento ? 0 : 2,
-          ease: 'Sine.easeOut',
-          onComplete: function() {
-            torcida.setScale(1, 1);
-            torcida.y = 0;
-            if (tweenIdleTorcida) tweenIdleTorcida.resume();
-          }
-        });
-      };
-
-      lamentarTorcida = function() {
-        if (!torcida || !cena) return;
-        if (tweenIdleTorcida) tweenIdleTorcida.pause();
-        cena.tweens.add({
-          targets: torcida,
-          y: 4,
-          scaleY: 0.92,
-          duration: reduzMovimento ? 0 : 220,
-          yoyo: true,
-          ease: 'Sine.easeInOut',
-          onComplete: function() {
-            torcida.setScale(1, 1);
-            torcida.y = 0;
-            if (tweenIdleTorcida) tweenIdleTorcida.resume();
-          }
-        });
-      };
+  // ---------- Torcida (arquibancada atrás do gol) ----------
+  const torcida = new THREE.Group();
+  const LINHAS = 4, COLUNAS = 36;
+  const cabecas = new THREE.InstancedMesh(new THREE.SphereGeometry(0.3, 8, 6), mat(0xffffff), LINHAS * COLUNAS);
+  const corpos = new THREE.InstancedMesh(new THREE.BoxGeometry(0.75, 0.7, 0.5), mat(0xffffff), LINHAS * COLUNAS);
+  const matriz = new THREE.Matrix4();
+  const corTmp = new THREE.Color();
+  let idx = 0;
+  for (let r = 0; r < LINHAS; r++) {
+    const yLinha = 1.4 + r * 0.85, zLinha = -9.2 - r * 0.8;
+    const degrau = new THREE.Mesh(new THREE.BoxGeometry(46, 0.6, 1.0), mat(0x1c2b3a));
+    degrau.position.set(0, yLinha - 0.95, zLinha);
+    cena.add(degrau);
+    for (let c = 0; c < COLUNAS; c++) {
+      const x = (c - COLUNAS / 2) * 1.15 + (r % 2) * 0.55;
+      corTmp.setHex(CORES_TORCIDA[(c * 3 + r) % CORES_TORCIDA.length]);
+      matriz.makeTranslation(x, yLinha, zLinha);
+      cabecas.setMatrixAt(idx, matriz);
+      cabecas.setColorAt(idx, corTmp);
+      matriz.makeTranslation(x, yLinha - 0.6, zLinha);
+      corpos.setMatrixAt(idx, matriz);
+      corpos.setColorAt(idx, corTmp);
+      idx++;
     }
   }
+  const paredao = new THREE.Mesh(new THREE.BoxGeometry(50, 9, 0.5), mat(0x1c2b3a));
+  paredao.position.set(0, 4.5, -13);
+  cena.add(paredao);
+  torcida.add(cabecas, corpos);
+  cena.add(torcida);
 
-  const config = {
-    type: Phaser.AUTO,
-    width: LARGURA_JOGO,
-    height: ALTURA_JOGO,
-    parent: containerId,
-    backgroundColor: '#2e9e5b',
-    scale: {
-      mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_HORIZONTALLY
-    },
-    scene: [CenaPenalti]
-  };
+  // ---------- Gol e rede ----------
+  const matTrave = mat(0xfffdf6);
+  const LARG_GOL = 7.32, ALT_GOL = 2.44, PROF_REDE = 1.9;
+  [-1, 1].forEach(function(lado) {
+    const poste = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, ALT_GOL, 10), matTrave);
+    poste.position.set(lado * LARG_GOL / 2, ALT_GOL / 2, 0);
+    cena.add(poste);
+  });
+  const travessao = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, LARG_GOL + 0.14, 10), matTrave);
+  travessao.rotation.z = Math.PI / 2;
+  travessao.position.set(0, ALT_GOL, 0);
+  cena.add(travessao);
 
-  const jogo = new Phaser.Game(config);
+  // A rede é um grupo centrado no seu próprio meio, para "vibrar" por escala.
+  const rede = new THREE.Group();
+  rede.position.set(0, ALT_GOL / 2, -PROF_REDE / 2);
+  const matRede = new THREE.LineBasicMaterial({ color: 0xfffdf6, transparent: true, opacity: 0.55 });
+  function painelRede(o, u, v, nu, nv) {
+    const p = [];
+    for (let i = 0; i <= nu; i++) {
+      const a = i / nu;
+      p.push(o.x + u.x * a, o.y + u.y * a, o.z + u.z * a, o.x + u.x * a + v.x, o.y + u.y * a + v.y, o.z + u.z * a + v.z);
+    }
+    for (let j = 0; j <= nv; j++) {
+      const b = j / nv;
+      p.push(o.x + v.x * b, o.y + v.y * b, o.z + v.z * b, o.x + v.x * b + u.x, o.y + v.y * b + u.y, o.z + v.z * b + u.z);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
+    rede.add(new THREE.LineSegments(geo, matRede));
+  }
+  const hw = LARG_GOL / 2, hh = ALT_GOL / 2, hp = PROF_REDE / 2;
+  painelRede({ x: -hw, y: -hh, z: -hp }, { x: LARG_GOL, y: 0, z: 0 }, { x: 0, y: ALT_GOL, z: 0 }, 24, 8);   // fundo
+  painelRede({ x: -hw, y: -hh, z: hp }, { x: 0, y: 0, z: -PROF_REDE }, { x: 0, y: ALT_GOL, z: 0 }, 6, 8);   // lateral esq.
+  painelRede({ x: hw, y: -hh, z: hp }, { x: 0, y: 0, z: -PROF_REDE }, { x: 0, y: ALT_GOL, z: 0 }, 6, 8);    // lateral dir.
+  painelRede({ x: -hw, y: hh, z: hp }, { x: LARG_GOL, y: 0, z: 0 }, { x: 0, y: 0, z: -PROF_REDE }, 24, 6);  // teto
+  cena.add(rede);
 
-  function resetarBola() {
-    if (!bola || !goleiro) return;
-    bola.setPosition(POSICAO_INICIAL_BOLA.x, POSICAO_INICIAL_BOLA.y);
-    bola.angle = 0;
-    bola.setScale(1, 1);
-    goleiro.setPosition(POSICAO_INICIAL_GOLEIRO.x, POSICAO_INICIAL_GOLEIRO.y);
-    goleiro.setScale(1, 1);
-    if (quadrilChute) quadrilChute.angle = 0;
+  // ---------- Sombras simples (círculos escuros no chão) ----------
+  const matSombra = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false });
+  function criarSombra(raio) {
+    const s = new THREE.Mesh(new THREE.CircleGeometry(raio, 20), matSombra);
+    s.rotation.x = -Math.PI / 2;
+    s.position.y = 0.02;
+    return s;
   }
 
-  // Anima a "perna de chute" do batedor (HU-18) e só chama `aoContato`
-  // (que dispara o movimento da bola/goleiro) no instante em que o pé
-  // encosta na bola — a bola nunca sai do lugar antes disso (CA-18.3).
-  function animarChuteBatedor(aoContato) {
-    if (!cena || !quadrilChute) { aoContato(); return; }
-    cena.tweens.add({
-      targets: quadrilChute,
-      angle: 16,
-      duration: d(TEMPO.PERNA_TRAS),
-      ease: 'Sine.easeOut',
-      onComplete: function() {
-        cena.tweens.add({
-          targets: quadrilChute,
-          angle: -55,
-          duration: d(TEMPO.PERNA_FRENTE),
-          ease: 'Cubic.easeIn',
-          onComplete: function() {
-            // HU-09: som de chute no instante exato do contato com a bola.
-            if (typeof SFX !== 'undefined' && SFX.chute) SFX.chute();
-            aoContato();
-            cena.tweens.add({
-              targets: quadrilChute,
-              angle: 0,
-              duration: d(TEMPO.PERNA_VOLTA),
-              delay: reduzMovimento ? 0 : 120,
-              ease: 'Sine.easeOut'
-            });
-          }
-        });
+  // ---------- Personagens (primitivas 3D; frente = +z local) ----------
+  function criarPessoa(cores) {
+    const raiz = new THREE.Group();
+    const pele = mat(0xe8b98c), camisa = mat(cores.camisa), detalhe = mat(cores.detalhe);
+    const calcao = mat(cores.calcao), meia = mat(cores.meia), luva = mat(cores.luva), preto = mat(0x21303b);
+
+    function perna(x) {
+      const g = new THREE.Group();
+      g.position.set(x, 0.95, 0);
+      const coxa = new THREE.Mesh(new THREE.CapsuleGeometry(0.085, 0.78, 3, 8), pele); coxa.position.y = -0.47;
+      const short = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.125, 0.3, 10), calcao); short.position.y = -0.12;
+      const canela = new THREE.Mesh(new THREE.CylinderGeometry(0.092, 0.09, 0.42, 10), meia); canela.position.y = -0.66;
+      const chuteira = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.08, 0.28), preto); chuteira.position.set(0, -0.93, 0.06);
+      g.add(coxa, short, canela, chuteira);
+      raiz.add(g);
+      return g;
+    }
+    const pernaChute = perna(-0.11); // lado que fica virado para a bola quando o batedor olha o gol
+    const pernaApoio = perna(0.11);
+
+    // Tronco (pivô no quadril) — leva torso, cabeça e braços, para poder inclinar.
+    const tronco = new THREE.Group();
+    tronco.position.y = 0.95;
+    const corpo = new THREE.Mesh(new THREE.CapsuleGeometry(0.17, 0.34, 3, 10), camisa);
+    corpo.position.y = 0.33; corpo.scale.set(1.25, 1, 0.75);
+    const faixa = new THREE.Mesh(new THREE.CylinderGeometry(0.178, 0.178, 0.09, 12), detalhe);
+    faixa.position.y = 0.38; faixa.scale.set(1.25, 1, 0.75);
+    const cabeca = new THREE.Mesh(new THREE.SphereGeometry(0.125, 14, 10), pele); cabeca.position.y = 0.83;
+    const cabelo = new THREE.Mesh(new THREE.SphereGeometry(0.132, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), mat(0x2b1d14));
+    cabelo.position.y = 0.84; cabelo.rotation.x = -0.25;
+    const olhoE = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 6), preto); olhoE.position.set(-0.05, 0.85, 0.115);
+    const olhoD = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 6), preto); olhoD.position.set(0.05, 0.85, 0.115);
+    tronco.add(corpo, faixa, cabeca, cabelo, olhoE, olhoD);
+
+    function braco(x) {
+      const g = new THREE.Group();
+      g.position.set(x, 0.57, 0);
+      const manga = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.065, 0.22, 8), camisa); manga.position.y = -0.11;
+      const ante = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.34, 3, 8), pele); ante.position.y = -0.36;
+      const mao = new THREE.Mesh(new THREE.SphereGeometry(0.078, 8, 8), luva); mao.position.y = -0.6;
+      g.add(manga, ante, mao);
+      tronco.add(g);
+      return g;
+    }
+    const bracoE = braco(-0.25);
+    const bracoD = braco(0.25);
+    raiz.add(tronco);
+    return { raiz: raiz, tronco: tronco, pernaChute: pernaChute, pernaApoio: pernaApoio, bracoE: bracoE, bracoD: bracoD };
+  }
+
+  const batedorObj = criarPessoa({ camisa: corPrimaria, detalhe: corSecundaria, calcao: corSecundaria, meia: corPrimaria, luva: 0xe8b98c });
+  const batedor = new THREE.Group();
+  batedor.add(batedorObj.raiz);
+  batedor.rotation.y = Math.PI; // de costas para a câmera, olhando o gol
+  const sombraBatedor = criarSombra(0.45);
+  cena.add(batedor, sombraBatedor);
+
+  const goleiroObj = criarPessoa({ camisa: 0x21303b, detalhe: 0xffc63b, calcao: 0x21303b, meia: 0x21303b, luva: 0xffc63b });
+  goleiroObj.raiz.position.y = -GOLEIRO_BASE.y; // pivô da cena = centro do tronco
+  const goleiro = new THREE.Group();
+  goleiro.add(goleiroObj.raiz);
+  const sombraGoleiro = criarSombra(0.5);
+  cena.add(goleiro, sombraGoleiro);
+
+  // ---------- Bola (esfera branca + 12 "gomos" escuros) ----------
+  const bola = new THREE.Group();
+  const bolaMalha = new THREE.Group();
+  bolaMalha.add(new THREE.Mesh(new THREE.SphereGeometry(ALTURA_BOLA, 20, 14), mat(0xfffdf6)));
+  const matGomo = new THREE.MeshBasicMaterial({ color: 0x21303b });
+  const vistos = {};
+  const ico = new THREE.IcosahedronGeometry(1, 0).getAttribute('position');
+  for (let i = 0; i < ico.count; i++) {
+    const n = new THREE.Vector3(ico.getX(i), ico.getY(i), ico.getZ(i)).normalize();
+    const chave = n.x.toFixed(3) + ',' + n.y.toFixed(3) + ',' + n.z.toFixed(3);
+    if (vistos[chave]) continue;
+    vistos[chave] = true;
+    const gomo = new THREE.Mesh(new THREE.CircleGeometry(ALTURA_BOLA * 0.3, 5), matGomo);
+    gomo.position.copy(n).multiplyScalar(ALTURA_BOLA * 1.003);
+    gomo.lookAt(n.clone().multiplyScalar(2));
+    bolaMalha.add(gomo);
+  }
+  bola.add(bolaMalha);
+  const sombraBola = criarSombra(ALTURA_BOLA * 1.1);
+  cena.add(bola, sombraBola);
+
+  // ---------- Mini-motor de animação (substitui os tweens do Phaser) ----------
+  const tweens = [];
+  function animar(duracao, aoAtualizar, aoTerminar, opcoes) {
+    const t = {
+      dur: Math.max(1, duracao), atraso: (opcoes && opcoes.atraso) || 0,
+      ease: (opcoes && opcoes.ease) || EASE.linear,
+      aoAtualizar: aoAtualizar, aoTerminar: aoTerminar, t0: null, cancelado: false
+    };
+    tweens.push(t);
+    return t;
+  }
+  function atualizarTweens(agora) {
+    tweens.slice().forEach(function(t) {
+      if (t.cancelado) { tweens.splice(tweens.indexOf(t), 1); return; }
+      if (t.t0 === null) t.t0 = agora;
+      const dec = agora - t.t0 - t.atraso;
+      if (dec < 0) return;
+      const u = Math.min(1, dec / t.dur);
+      if (t.aoAtualizar) t.aoAtualizar(t.ease(u), u);
+      if (u >= 1) {
+        tweens.splice(tweens.indexOf(t), 1);
+        if (t.aoTerminar) t.aoTerminar();
       }
     });
   }
+  function pulso(duracao, aplicar, aoTerminar) { // vai e volta (yoyo)
+    animar(d(duracao), function(e, u) { aplicar(Math.sin(Math.PI * u)); }, function() { aplicar(0); if (aoTerminar) aoTerminar(); });
+  }
 
-  // Chuta a bola na zona escolhida. `correta` decide o resultado:
-  // certa -> o goleiro pula para outra zona (gol); errada -> o goleiro
-  // pula exatamente para a zona chutada (defesa). Sem sorteio: o resultado
-  // sempre reflete se a criança acertou a conta.
+  // ---------- Estado ----------
+  let emAnimacao = false;
+  let goleiroLivre = true;
+  let offTorcida = 0;
+  let resetPendente = null;
+  let vivo = true;
+  let rafId = 0;
+
+  function resetar() {
+    resetPendente = null;
+    bola.position.set(PONTO_BOLA.x, PONTO_BOLA.y, PONTO_BOLA.z);
+    bolaMalha.rotation.set(0, 0, 0);
+    goleiro.position.set(GOLEIRO_BASE.x, GOLEIRO_BASE.y, GOLEIRO_BASE.z);
+    goleiro.rotation.set(0, 0, 0);
+    goleiro.scale.set(1, 1, 1);
+    goleiroObj.bracoE.rotation.set(0, 0, -0.6);
+    goleiroObj.bracoD.rotation.set(0, 0, 0.6);
+    batedor.position.set(INICIO_BATEDOR.x, 0, INICIO_BATEDOR.z);
+    [batedorObj.pernaChute, batedorObj.pernaApoio, batedorObj.bracoE, batedorObj.bracoD, batedorObj.tronco].forEach(function(p) { p.rotation.set(0, 0, 0); });
+    rede.scale.set(1, 1, 1);
+    offTorcida = 0;
+    goleiroLivre = true;
+  }
+  resetar();
+
+  function comemorarTorcida() {
+    animar(d(160 * 6), function(e, u) { offTorcida = Math.abs(Math.sin(u * Math.PI * 3)) * 0.35; }, function() { offTorcida = 0; });
+  }
+  function lamentarTorcida() {
+    animar(d(440), function(e, u) { offTorcida = -Math.sin(u * Math.PI) * 0.18; }, function() { offTorcida = 0; });
+  }
+
+  // ---------- Botões de zona sobre o canvas ----------
+  function posicionarBotoes() {
+    camera.updateMatrixWorld();
+    const v = new THREE.Vector3();
+    Object.keys(ZONAS).forEach(function(id) {
+      const botao = document.querySelector('.botao-zona[data-zona="' + id + '"]');
+      if (!botao) return;
+      v.set(ZONAS[id].x, ZONAS[id].y, 0).project(camera);
+      botao.style.left = ((v.x * 0.5 + 0.5) * 100).toFixed(2) + '%';
+      botao.style.top = ((-v.y * 0.5 + 0.5) * 100).toFixed(2) + '%';
+    });
+  }
+  function ajustarTamanho() {
+    const w = container.clientWidth || 640, h = container.clientHeight || 360;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    posicionarBotoes();
+  }
+  ajustarTamanho();
+  let observador = null;
+  if (typeof ResizeObserver !== 'undefined') {
+    observador = new ResizeObserver(ajustarTamanho);
+    observador.observe(container);
+  } else {
+    window.addEventListener('resize', ajustarTamanho);
+  }
+
+  // ---------- Loop de render ----------
+  function quadro(agora) {
+    if (!vivo) return;
+    rafId = requestAnimationFrame(quadro);
+    atualizarTweens(agora);
+    const t = agora / 1000;
+    torcida.position.y = (reduzMovimento ? 0 : Math.sin(t * 4.2) * 0.06) + offTorcida;
+    if (goleiroLivre && !reduzMovimento) goleiro.position.x = GOLEIRO_BASE.x + Math.sin(t * 1.6) * 0.18;
+    sombraBola.position.set(bola.position.x, 0.02, bola.position.z);
+    sombraBola.scale.setScalar(Math.max(0.5, 1 - (bola.position.y - ALTURA_BOLA) * 0.25));
+    sombraBatedor.position.set(batedor.position.x, 0.02, batedor.position.z);
+    sombraGoleiro.position.set(goleiro.position.x, 0.02, goleiro.position.z);
+    renderer.render(cena, camera);
+  }
+  rafId = requestAnimationFrame(quadro);
+
+  // ---------- Chute ----------
+  // O batedor corre, arma e chuta; `aoContato` só roda no instante em que o pé
+  // encosta na bola — a bola nunca sai do lugar antes disso.
+  function animarChute(aoContato) {
+    const b = batedorObj;
+    animar(d(TEMPO.CORRIDA), function(e, u) {
+      batedor.position.x = INICIO_BATEDOR.x + (PLANTIO_BATEDOR.x - INICIO_BATEDOR.x) * e;
+      batedor.position.z = INICIO_BATEDOR.z + (PLANTIO_BATEDOR.z - INICIO_BATEDOR.z) * e;
+      const passo = Math.sin(u * Math.PI * 3) * 0.7;
+      b.pernaChute.rotation.x = passo; b.pernaApoio.rotation.x = -passo;
+      b.bracoE.rotation.x = passo * 0.8; b.bracoD.rotation.x = -passo * 0.8;
+    }, function() {
+      animar(d(TEMPO.PERNA_TRAS), function(e) {
+        b.pernaChute.rotation.x = 0.9 * e;
+        b.tronco.rotation.x = 0.15 * e; // inclina para trás ao armar
+        b.bracoE.rotation.x = 0; b.bracoD.rotation.x = 0;
+      }, function() {
+        let tocou = false;
+        animar(d(TEMPO.PERNA_FRENTE), function(e) {
+          b.pernaChute.rotation.x = 0.9 - 2.1 * e;
+          b.pernaChute.rotation.z = -0.3 * e; // cruza a perna em direção à bola
+          b.tronco.rotation.x = 0.15 - 0.4 * e;
+          if (!tocou && e >= 0.64) {
+            tocou = true;
+            if (typeof SFX !== 'undefined' && SFX.chute) SFX.chute(); // HU-09
+            aoContato();
+          }
+        }, function() {
+          animar(d(TEMPO.PERNA_VOLTA), function(e) {
+            b.pernaChute.rotation.x = -1.2 * (1 - e);
+            b.pernaChute.rotation.z = -0.3 * (1 - e);
+            b.tronco.rotation.x = -0.25 * (1 - e);
+          }, null, { atraso: reduzMovimento ? 0 : 120, ease: EASE.sineOut });
+        }, { ease: EASE.cubicIn });
+      }, null, { ease: EASE.sineOut });
+    });
+  }
+
+  // Pose final do goleiro para defender uma zona: centro do tronco, inclinação,
+  // braços e o z em que as mãos encontram a bola.
+  function poseGoleiro(zonaId) {
+    const z = ZONAS[zonaId];
+    if (zonaId === 'meio') return { x: 0, y: GOLEIRO_BASE.y, rotZ: 0, armZ: 0.25, armX: -1.3, zBola: 0.95 };
+    const lado = Math.sign(z.x);
+    const ang = z.y > 1.5 ? 0.95 : 1.4; // salto alto (~54°) ou mergulho rasteiro (~80°)
+    const phi = -lado * ang;
+    return {
+      x: z.x + ALCANCE_MAOS * Math.sin(phi),
+      y: z.y - ALCANCE_MAOS * Math.cos(phi),
+      rotZ: phi, armZ: 2.9, armX: 0, zBola: 0.45
+    };
+  }
+
   function chutar(zonaId, correta, aoFinalizar) {
-    if (emAnimacao || !cena || !bola || !goleiro) return;
-    const destinoBola = ZONAS[zonaId];
-    if (!destinoBola) return;
+    if (emAnimacao || !vivo) return;
+    const alvo = ZONAS[zonaId];
+    if (!alvo) return;
+    if (resetPendente) { tweens.length = 0; resetar(); } // novo chute antes do reset da jogada anterior
     emAnimacao = true;
+    goleiroLivre = false;
 
-    let destinoGoleiro;
+    // Certo -> o goleiro vai para outra zona (gol); errado -> na zona chutada (defesa).
+    let zonaGoleiro = zonaId;
     if (correta) {
-      const outrasZonas = Object.keys(ZONAS).filter(id => id !== zonaId);
-      const zonaEscolhida = outrasZonas[Math.floor(Math.random() * outrasZonas.length)];
-      destinoGoleiro = ZONAS[zonaEscolhida];
-    } else {
-      destinoGoleiro = destinoBola;
+      const outras = Object.keys(ZONAS).filter(function(id) { return id !== zonaId; });
+      zonaGoleiro = outras[Math.floor(Math.random() * outras.length)];
+    }
+    const pose = poseGoleiro(zonaGoleiro);
+    const fim = { x: alvo.x, y: alvo.y, z: correta ? -0.35 : pose.zBola };
+
+    function iniciarBolaEGoleiro() {
+      // O goleiro sai junto: chega um pouco antes da bola para não parecer teleporte.
+      const g0 = { x: goleiro.position.x, y: GOLEIRO_BASE.y };
+      animar(d(TEMPO.MERGULHO_GOLEIRO), function(e) {
+        goleiro.position.x = g0.x + (pose.x - g0.x) * e;
+        goleiro.position.y = g0.y + (pose.y - g0.y) * e;
+        goleiro.rotation.z = pose.rotZ * e;
+        goleiroObj.bracoE.rotation.set(pose.armX * e, 0, -(0.6 + (pose.armZ - 0.6) * e));
+        goleiroObj.bracoD.rotation.set(pose.armX * e, 0, 0.6 + (pose.armZ - 0.6) * e);
+      }, function() {
+        if (!correta) { // impacto da defesa: o goleiro "encolhe" ao segurar a bola
+          pulso(TEMPO.IMPACTO_DEFESA, function(s) { goleiro.scale.set(1 + 0.12 * s, 1 - 0.15 * s, 1); });
+        }
+      }, { ease: EASE.sineOut });
+
+      // Voo da bola: reta até o alvo com um pequeno arco e giro.
+      const ini = { x: bola.position.x, y: bola.position.y, z: bola.position.z };
+      animar(d(TEMPO.VOO_BOLA), function(e, u) {
+        bola.position.set(
+          ini.x + (fim.x - ini.x) * e,
+          ini.y + (fim.y - ini.y) * e + 4 * u * (1 - u) * 0.5,
+          ini.z + (fim.z - ini.z) * e
+        );
+        bolaMalha.rotation.x = -u * TEMPO.GIRO_BOLA;
+        bolaMalha.rotation.z = u * TEMPO.GIRO_BOLA * 0.3;
+      }, function() {
+        emAnimacao = false;
+        if (correta) {
+          // Gol: a bola afunda na rede, que balança, e a torcida comemora.
+          const yRede = Math.max(ALTURA_BOLA, fim.y - 0.25);
+          animar(d(TEMPO.BOLA_NA_REDE), function(e) {
+            bola.position.z = fim.z + (-1.5 - fim.z) * e;
+            bola.position.y = fim.y + (yRede - fim.y) * e;
+          }, null, { ease: EASE.sineOut });
+          pulso(TEMPO.VIBRACAO_REDE, function(s) { rede.scale.set(1 + 0.05 * s, 1 + 0.05 * s, 1 + 0.05 * s); });
+          comemorarTorcida();
+        } else {
+          // Defesa: a bola quica no goleiro e cai para a frente.
+          animar(d(TEMPO.REBOTE), function(e) {
+            bola.position.z = fim.z + 0.9 * e;
+            bola.position.y = fim.y * (1 - e * e) + ALTURA_BOLA * e * e;
+          }, null, { ease: EASE.sineOut });
+          lamentarTorcida();
+        }
+        if (aoFinalizar) aoFinalizar({ gol: correta });
+        resetPendente = animar(reduzMovimento ? 60 : TEMPO.ANTES_DE_RESETAR, null, resetar);
+      }, { ease: EASE.quadOut });
     }
 
-    function iniciarMovimentoBolaEGoleiro() {
-      // O goleiro sai um pouco antes de a bola chegar, senão o mergulho
-      // parece "teleporte" e não dá pra ler quem chegou primeiro.
-      cena.tweens.add({
-        targets: goleiro,
-        x: destinoGoleiro.x,
-        y: destinoGoleiro.y,
-        duration: d(TEMPO.MERGULHO_GOLEIRO),
-        ease: 'Sine.easeOut',
-        onComplete: function() {
-          if (!correta) {
-            // Pequeno "impacto" de defesa (HU-12): o goleiro encolhe ao
-            // segurar a bola, sem alterar resultado nem pontuação (CA-18.4).
-            cena.tweens.add({
-              targets: goleiro,
-              scaleX: 1.12, scaleY: 0.85,
-              duration: d(TEMPO.IMPACTO_DEFESA),
-              yoyo: true
-            });
-          }
-        }
-      });
-
-      // Giro da bola em voo — reforça a sensação de chute real (HU-12).
-      // O total de graus cresce junto com a duração para o giro continuar
-      // com a mesma "velocidade de rotação" de antes, só que por mais tempo.
-      cena.tweens.add({
-        targets: bola,
-        angle: bola.angle + TEMPO.GIRO_BOLA,
-        duration: d(TEMPO.VOO_BOLA),
-        ease: 'Linear'
-      });
-
-      // Pequena sensação de profundidade: a bola "encolhe" levemente ao se
-      // afastar do batedor rumo ao gol, como se ganhasse distância da
-      // câmera (HU-12).
-      cena.tweens.add({
-        targets: bola,
-        scaleX: 0.78,
-        scaleY: 0.78,
-        duration: d(TEMPO.VOO_BOLA),
-        ease: 'Sine.easeIn'
-      });
-
-      cena.tweens.add({
-        targets: bola,
-        x: destinoBola.x,
-        y: destinoBola.y,
-        duration: d(TEMPO.VOO_BOLA),
-        ease: 'Cubic.easeOut',
-        onComplete: () => {
-          emAnimacao = false;
-          if (correta) {
-            // Gol: a bola ainda afunda um pouco na rede em vez de parar
-            // seca na linha — é esse trecho que faz a jogada "terminar"
-            // visualmente dentro do gol, junto da rede balançando.
-            cena.tweens.add({
-              targets: bola,
-              y: destinoBola.y - 10,
-              scaleX: 0.68, scaleY: 0.68,
-              duration: d(TEMPO.BOLA_NA_REDE),
-              ease: 'Sine.easeOut'
-            });
-            cena.tweens.add({
-              targets: rede,
-              scaleX: 1.05, scaleY: 1.05,
-              duration: d(TEMPO.VIBRACAO_REDE),
-              yoyo: true
-            });
-            comemorarTorcida();
-          } else {
-            lamentarTorcida();
-          }
-          if (aoFinalizar) aoFinalizar({ gol: correta });
-          cena.time.delayedCall(reduzMovimento ? 60 : TEMPO.ANTES_DE_RESETAR, resetarBola);
-        }
-      });
-    }
-
-    animarChuteBatedor(iniciarMovimentoBolaEGoleiro);
+    animarChute(iniciarBolaEGoleiro);
   }
 
   function destruir() {
-    if (jogo) jogo.destroy(true);
+    if (!vivo) return;
+    vivo = false;
+    cancelAnimationFrame(rafId);
+    tweens.length = 0;
+    if (observador) observador.disconnect(); else window.removeEventListener('resize', ajustarTamanho);
+    Object.keys(ZONAS).forEach(function(id) { // devolve as posições dos botões ao CSS
+      const botao = document.querySelector('.botao-zona[data-zona="' + id + '"]');
+      if (botao) { botao.style.left = ''; botao.style.top = ''; }
+    });
+    cena.traverse(function(o) {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach(function(m) { m.dispose(); }); }
+    });
+    renderer.dispose();
+    if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
   }
 
   return { chutar, destruir };

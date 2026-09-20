@@ -31,7 +31,7 @@ raiz/     README.md, package.json, package-lock.json, vercel.json
 | `JS/banco-questoes.js` | banco curado de questões + validação de cada pergunta |
 | `JS/narration.js` | narração por voz (Web Speech API) |
 | `JS/sfx.js` | efeitos sonoros gerados na hora (Web Audio API, sem arquivos de áudio) |
-| `JS/game.js` | cena do pênalti em Phaser 3 |
+| `JS/game.js` | cena 3D do pênalti em Three.js (r149) |
 | `JS/progressao.js` | desbloqueio de fases e recordes salvos |
 | `JS/main.js` | navegação entre telas e orquestração do estado do jogo |
 | `JS/firebase-config.js` | inicializa o Firebase no navegador e fala com o Firestore |
@@ -136,7 +136,7 @@ mesma ordem de eventos (contato → resultado → finalização).
 4. **Pastas eliminadas.** `public/`, `api/`, `api/_lib/` e `scripts/` não
    existem mais — tudo na raiz (ver tabela acima).
 5. **Conferido e OK (não eram bugs):** a versão do Firebase JS SDK
-   (`12.18.0`) e a versão do Phaser (`3.80.1`) usadas via CDN são válidas e
+   (`12.18.0`) e a versão do Phaser (`3.80.1`, agora substituído por Three.js r149) usadas via CDN são válidas e
    atuais; as coordenadas das 5 zonas do gol em `game.js` batem
    exatamente com as posições dos botões em `styles.css`; as regras do
    Firestore (`firestore.rules`) já liberam exatamente as leituras/escritas

@@ -103,7 +103,7 @@ function mostrarTela(idTela) {
   if (botaoOuvir) botaoOuvir.hidden = (idTela !== 'tela-fase1');
 }
 
-// Para o timer e desmonta o jogo Phaser, se estiver rodando — usado sempre
+// Para o timer e desmonta a cena 3D (Three.js), se estiver rodando — usado sempre
 // que se sai da tela-fase1 sem terminar a cobranca (voltar ou ir ao menu).
 function encerrarJogoEmAndamento() {
   pararTimer();
@@ -438,10 +438,10 @@ function iniciarFase1() {
   document.getElementById('jogo-penalti').innerHTML = '';
 
   try {
-    if (typeof Phaser === 'undefined') throw new Error('Phaser nao carregou');
+    if (typeof THREE === 'undefined') throw new Error('Three.js nao carregou');
     estado.jogoPenalti = criarJogoPenalti('jogo-penalti', estado.selecaoId);
   } catch (e) {
-    console.warn('Phaser indisponivel:', e);
+    console.warn('Cena 3D indisponivel:', e);
     estado.jogoPenalti = null;
   }
 
