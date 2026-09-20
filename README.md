@@ -9,36 +9,106 @@ aleatório salvo no navegador (`localStorage`).
 
 ## Estrutura do projeto
 
-Todos os arquivos ficam soltos na raiz do repositório — **sem pastas** — pra
-ficar fácil de abrir, editar, remover ou sobrescrever qualquer arquivo
-direto pelo GitHub, sem precisar navegar por subpastas:
+Os arquivos ficam separados por tipo, cada um na sua pasta:
+
+```
+CSS/      styles.css
+Config/   firestore.rules
+HTML/     index.html
+Imagens/  favicon.ico, hexatech-logo.png, hexatech-logo-hero.png, estrela-cruzeiro.png
+JS/       data.js, avatar-data.js, questions.js, banco-questoes.js, narration.js,
+          sfx.js, game.js, progressao.js, main.js, firebase-config.js, seed-firestore.js
+raiz/     README.md, package.json, package-lock.json, vercel.json
+```
 
 | Arquivo | O que é |
 |---|---|
-| `index.html` | página principal |
-| `styles.css` | todo o CSS |
-| `data.js` | listas padrão (apelidos, seleções, dificuldades) + mensagens de resultado |
-| `avatar-data.js` | categorias/estilos de avatar (DiceBear) da tela de personalizar |
-| `questions.js` | gerador das perguntas de matemática por dificuldade |
-| `narration.js` | narração por voz (Web Speech API) |
-| `game.js` | cena do pênalti em Phaser 3 |
-| `main.js` | navegação entre telas e orquestração do estado do jogo |
-| `firebase-config.js` | inicializa o Firebase no navegador e fala com o Firestore |
-| `favicon.ico`, `hexatech-logo.png`, `hexatech-logo-hero.png` | imagens |
-| `firestore.rules` | regras de segurança do Firestore (publicar no Console) |
-| `seed-firestore.js` | script Node que popula o Firestore com o conteúdo inicial (rodar 1x, localmente) |
-| `.env.example` | modelo das variáveis de ambiente usadas só pelo `seed-firestore.js` |
+| `HTML/index.html` | página principal |
+| `CSS/styles.css` | todo o CSS |
+| `JS/data.js` | listas padrão (apelidos, seleções, dificuldades) + mensagens de resultado |
+| `JS/avatar-data.js` | categorias/estilos de avatar (DiceBear) da tela de personalizar |
+| `JS/questions.js` | gerador das perguntas de matemática por dificuldade |
+| `JS/banco-questoes.js` | banco curado de questões + validação de cada pergunta |
+| `JS/narration.js` | narração por voz (Web Speech API) |
+| `JS/sfx.js` | efeitos sonoros gerados na hora (Web Audio API, sem arquivos de áudio) |
+| `JS/game.js` | cena do pênalti em Phaser 3 |
+| `JS/progressao.js` | desbloqueio de fases e recordes salvos |
+| `JS/main.js` | navegação entre telas e orquestração do estado do jogo |
+| `JS/firebase-config.js` | inicializa o Firebase no navegador e fala com o Firestore |
+| `JS/seed-firestore.js` | script Node que popula o Firestore (rodar 1x, localmente) |
+| `Config/firestore.rules` | regras de segurança do Firestore (publicar no Console) |
+| `vercel.json` | faz `/` servir `HTML/index.html` no deploy |
 | `package.json` | dependências do `seed-firestore.js` (`dotenv`, `firebase-admin`) |
 
-**Não existe mais pasta `api/`.** O jogo fala direto com o Firestore pelo
-navegador (via `firebase-config.js`); as antigas funções serverless
+Como o `index.html` está dentro de `HTML/`, os caminhos dentro dele são
+relativos (`../CSS/styles.css`, `../JS/main.js`, `../Imagens/...`) e o
+`vercel.json` cuida de apontar a raiz do site pra ele.
+
+**Não existe pasta `api/`.** O jogo fala direto com o Firestore pelo
+navegador (via `JS/firebase-config.js`); as antigas funções serverless
 (`api/session.js`, `api/progress.js`) não eram mais usadas por nada — eram
 sobra de uma versão anterior — então foram removidas. Isso também significa
 que o site é **estático puro**: não precisa configurar nenhuma variável de
 ambiente pra ele funcionar publicado (as variáveis do `.env` só existem pra
 você rodar `npm run seed` na sua máquina).
 
-## O que foi corrigido nesta rodada
+## O que mudou nesta rodada (contraste + ritmo do pênalti)
+
+### 1. Contraste
+
+Auditoria automática de contraste em todas as 7 telas, nos dois modos
+(normal e alto contraste), medindo a cor real de cada texto renderizado
+contra o fundo real. Foram encontradas **7 falhas de WCAG AA**, todas
+corrigidas:
+
+| Onde | Antes | Agora |
+|---|---|---|
+| Chips de personagem/animal | **1.00:1** (texto branco sobre fundo branco — invisíveis no alto contraste) | 13.5:1 |
+| Zona do gol errada | 2.64:1 | 7.04:1 |
+| Selo "Sem texto livre" | 2.64:1 | 7.04:1 |
+| Pontuação na tela de resultado | 1.99:1 | 5.82:1 |
+| Zona do gol certa | 3.35:1 | 6.70:1 |
+| Cronômetro (verde) | 3.35:1 | 6.70:1 |
+| Botão "Ouvir novamente" | 3.99:1 | 7.04:1 |
+
+A causa dos chips invisíveis: eles tinham sido desenhados como pílulas
+translúcidas pra ficar por cima do cenário escuro do fundo. No **alto
+contraste** esse cenário é escondido de propósito, e aí sobrava texto
+quase branco sobre fundo branco. Agora os chips são sólidos, com texto
+escuro e borda — funcionam com ou sem cenário atrás.
+
+Outras correções de acessibilidade encontradas no caminho:
+
+- O CSS dos avatares usava as classes `.opcao-avatar` / `.opcao-avatar-selecionada`,
+  mas o `main.js` cria os botões como `.item-avatar` / `.avatar-selecionado`.
+  As regras nunca casavam com nada: os avatares ficavam **sem anel de foco
+  pelo teclado** (WCAG 2.4.7) e **sem marcação visível de selecionado**.
+- "Selecionado" não depende mais de sombra (o alto contraste remove todas as
+  sombras) nem só de cor: chips ganham um ✓ e avatares uma borda grossa.
+- A paleta da identidade visual continua a mesma. O que entrou foram
+  variantes escuras (`--verde-texto`, `--azul-texto`, `--vermelho-texto`,
+  `--amarelo-texto`) usadas **só onde há texto** por cima da cor.
+
+### 2. Ritmo da animação do pênalti
+
+A jogada inteira se resolvia em ~700ms: a criança clicava e o resultado já
+estava na tela, sem dar pra ver o jogador chutar nem a bola entrar. Agora
+dura ~1430ms, dividida em momentos que dá pra acompanhar:
+
+| Momento | Antes | Agora |
+|---|---|---|
+| Preparação do chute (perna vai e volta) | 220ms | 420ms |
+| Voo da bola até o gol | 480ms | 950ms |
+| Mergulho do goleiro | 420ms | 780ms |
+| Bola afundando na rede (no gol) | — | 260ms (novo) |
+| Pausa antes da próxima pergunta | 1500ms | 1900ms |
+
+Os tempos ficam todos na constante `TEMPO`, no topo de `JS/game.js`, então
+dá pra ajustar o ritmo num lugar só. **`prefers-reduced-motion` continua
+respeitado**: quem pede menos movimento resolve a jogada em ~100ms, com a
+mesma ordem de eventos (contato → resultado → finalização).
+
+## O que foi corrigido em rodadas anteriores
 
 1. **Avatares da aba "Bichinhos" quebrados (voltava o círculo com a letra
    "B").** A causa: `avatar-data.js` usava o estilo `critters` pra essa
