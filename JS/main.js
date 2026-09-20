@@ -36,6 +36,12 @@ var estado = {
 
 var TOTAL_COBRANCAS = 3;
 var TIMER_MAX = 15;
+
+// Tempo que o resultado ("GOOOL!" / "O goleiro defendeu!") fica na tela
+// antes de carregar a proxima pergunta. Acompanha o ritmo mais lento da
+// animacao do penalti (ver TEMPO em game.js): tem que ser maior que
+// TEMPO.ANTES_DE_RESETAR pra bola ja estar de volta na marca.
+var PAUSA_ENTRE_COBRANCAS = 1900;
 var categoriaAvatarAtiva = CATEGORIAS_AVATAR[0].id;
 
 // Rotulos amigaveis das zonas do gol, usados no resumo de cobrancas da
@@ -631,10 +637,13 @@ function finalizarCobranca(detalhes) {
   atualizarBolinhasProgresso();
   atualizarDisplayPontuacao();
 
+  // Pausa entre uma cobranca e a proxima. Precisa ser maior que o tempo que
+  // a bola leva pra voltar pra marca do penalti (TEMPO.ANTES_DE_RESETAR, em
+  // game.js), senao a pergunta seguinte aparece com a bola ainda na rede.
   setTimeout(function() {
     if (estado.cobrancaAtual >= TOTAL_COBRANCAS) { irParaResultado(); }
     else { carregarProximaPergunta(); }
-  }, 1500);
+  }, PAUSA_ENTRE_COBRANCAS);
 }
 
 function atualizarDisplayPontuacao() {

@@ -33,6 +33,28 @@ const ZONAS = {
   'baixo-direita':   { x: 410, y: 110 }
 };
 
+// ---------------------------------------------------------------------------
+// Ritmo da animação do pênalti (ms).
+// A versão anterior resolvia a jogada inteira em ~700ms: a criança clicava e
+// o resultado já estava na tela, sem tempo de ver o jogador chutar nem a bola
+// entrar. Aqui a sequência foi alongada para ~1,4s e dividida em momentos
+// legíveis: preparação -> contato -> voo da bola -> bola entrando na rede.
+// Todos esses valores passam por d(), então em prefers-reduced-motion
+// continuam praticamente instantâneos e a ordem dos eventos não muda.
+// ---------------------------------------------------------------------------
+const TEMPO = {
+  PERNA_TRAS: 200,      // batedor arma o chute (antes: 90)
+  PERNA_FRENTE: 220,    // perna desce até encostar na bola (antes: 130)
+  PERNA_VOLTA: 320,     // pé volta à posição de descanso
+  VOO_BOLA: 950,        // bola da marca do pênalti até a zona (antes: 480)
+  GIRO_BOLA: 1080,      // graus de giro durante o voo
+  MERGULHO_GOLEIRO: 780,// goleiro chega um pouco antes da bola (antes: 420)
+  IMPACTO_DEFESA: 200,
+  BOLA_NA_REDE: 260,    // a bola afunda na rede depois do gol
+  VIBRACAO_REDE: 220,
+  ANTES_DE_RESETAR: 1500
+};
+
 const POSICAO_INICIAL_BOLA = { x: 320, y: 300 };
 const POSICAO_INICIAL_GOLEIRO = ZONAS.meio;
 const POSICAO_INICIAL_BATEDOR = { x: 270, y: 322 };
@@ -240,13 +262,13 @@ function criarJogoPenalti(containerId, selecaoId) {
     cena.tweens.add({
       targets: quadrilChute,
       angle: 16,
-      duration: d(90),
+      duration: d(TEMPO.PERNA_TRAS),
       ease: 'Sine.easeOut',
       onComplete: function() {
         cena.tweens.add({
           targets: quadrilChute,
           angle: -55,
-          duration: d(130),
+          duration: d(TEMPO.PERNA_FRENTE),
           ease: 'Cubic.easeIn',
           onComplete: function() {
             // HU-09: som de chute no instante exato do contato com a bola.
@@ -255,8 +277,8 @@ function criarJogoPenalti(containerId, selecaoId) {
             cena.tweens.add({
               targets: quadrilChute,
               angle: 0,
-              duration: d(260),
-              delay: reduzMovimento ? 0 : 80,
+              duration: d(TEMPO.PERNA_VOLTA),
+              delay: reduzMovimento ? 0 : 120,
               ease: 'Sine.easeOut'
             });
           }
@@ -285,26 +307,35 @@ function criarJogoPenalti(containerId, selecaoId) {
     }
 
     function iniciarMovimentoBolaEGoleiro() {
+      // O goleiro sai um pouco antes de a bola chegar, senão o mergulho
+      // parece "teleporte" e não dá pra ler quem chegou primeiro.
       cena.tweens.add({
         targets: goleiro,
         x: destinoGoleiro.x,
         y: destinoGoleiro.y,
-        duration: d(420),
+        duration: d(TEMPO.MERGULHO_GOLEIRO),
         ease: 'Sine.easeOut',
         onComplete: function() {
           if (!correta) {
             // Pequeno "impacto" de defesa (HU-12): o goleiro encolhe ao
             // segurar a bola, sem alterar resultado nem pontuação (CA-18.4).
-            cena.tweens.add({ targets: goleiro, scaleX: 1.12, scaleY: 0.85, duration: d(130), yoyo: true });
+            cena.tweens.add({
+              targets: goleiro,
+              scaleX: 1.12, scaleY: 0.85,
+              duration: d(TEMPO.IMPACTO_DEFESA),
+              yoyo: true
+            });
           }
         }
       });
 
       // Giro da bola em voo — reforça a sensação de chute real (HU-12).
+      // O total de graus cresce junto com a duração para o giro continuar
+      // com a mesma "velocidade de rotação" de antes, só que por mais tempo.
       cena.tweens.add({
         targets: bola,
-        angle: bola.angle + 720,
-        duration: d(480),
+        angle: bola.angle + TEMPO.GIRO_BOLA,
+        duration: d(TEMPO.VOO_BOLA),
         ease: 'Linear'
       });
 
@@ -315,7 +346,7 @@ function criarJogoPenalti(containerId, selecaoId) {
         targets: bola,
         scaleX: 0.78,
         scaleY: 0.78,
-        duration: d(480),
+        duration: d(TEMPO.VOO_BOLA),
         ease: 'Sine.easeIn'
       });
 
@@ -323,19 +354,33 @@ function criarJogoPenalti(containerId, selecaoId) {
         targets: bola,
         x: destinoBola.x,
         y: destinoBola.y,
-        duration: d(480),
+        duration: d(TEMPO.VOO_BOLA),
         ease: 'Cubic.easeOut',
         onComplete: () => {
           emAnimacao = false;
           if (correta) {
-            // Pequena "vibração" da rede ao balançar com o gol (HU-12).
-            cena.tweens.add({ targets: rede, scaleX: 1.05, scaleY: 1.05, duration: d(130), yoyo: true });
+            // Gol: a bola ainda afunda um pouco na rede em vez de parar
+            // seca na linha — é esse trecho que faz a jogada "terminar"
+            // visualmente dentro do gol, junto da rede balançando.
+            cena.tweens.add({
+              targets: bola,
+              y: destinoBola.y - 10,
+              scaleX: 0.68, scaleY: 0.68,
+              duration: d(TEMPO.BOLA_NA_REDE),
+              ease: 'Sine.easeOut'
+            });
+            cena.tweens.add({
+              targets: rede,
+              scaleX: 1.05, scaleY: 1.05,
+              duration: d(TEMPO.VIBRACAO_REDE),
+              yoyo: true
+            });
             comemorarTorcida();
           } else {
             lamentarTorcida();
           }
           if (aoFinalizar) aoFinalizar({ gol: correta });
-          cena.time.delayedCall(reduzMovimento ? 60 : 950, resetarBola);
+          cena.time.delayedCall(reduzMovimento ? 60 : TEMPO.ANTES_DE_RESETAR, resetarBola);
         }
       });
     }
