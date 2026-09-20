@@ -205,21 +205,11 @@
       <span id="pontuacao-display" class="pontuacao-display">0 <img class="icone-cruzeiro" src="../Imagens/estrela-cruzeiro.png" alt="estrelinhas Cruzeiro"></span>
     </div>
     <div class="caixa-pergunta">
-      <p id="pergunta-texto" class="pergunta-texto">--</p>
+      <p id="pergunta-texto" class="pergunta-texto" aria-live="polite" aria-atomic="true">--</p>
+      <button id="botao-ouvir-novamente" class="botao-ouvir-novamente" type="button" aria-label="Ouvir a pergunta novamente" hidden>🔊 Ouvir novamente</button>
     </div>
     <div class="palco-penalti">
       <div id="jogo-penalti"></div>
-      
-      <!-- INÍCIO DA ADIÇÃO DA ESTRUTURA 2.5D COM ARQUIBANCADA -->
-      <div id="estadio-2d5">
-        <div id="arquibancada"></div> 
-        <div id="campo-isometrico"></div> 
-        <div id="goleiro" class="sprite-2d5"></div>
-        <div id="bola" class="sprite-2d5"></div>
-        <div id="jogador" class="sprite-2d5"></div>
-      </div>
-      <!-- FIM DA ADIÇÃO -->
-
       <div id="zonas-gol" class="zonas-gol">
         <button class="botao-zona zona-topo-esquerda" type="button" data-zona="topo-esquerda">--</button>
         <button class="botao-zona zona-topo-direita" type="button" data-zona="topo-direita">--</button>
@@ -228,15 +218,16 @@
         <button class="botao-zona zona-baixo-direita" type="button" data-zona="baixo-direita">--</button>
       </div>
     </div>
-    <p id="mensagem-feedback" class="mensagem-feedback"></p>
+    <p id="mensagem-feedback" class="mensagem-feedback" aria-live="polite" aria-atomic="true"></p>
   </section>
 
   <section id="tela-resultado" class="tela">
     <h2>Fim da Fase 1!</h2>
     <p id="placar-final" class="placar-grande">0 / 3</p>
     <p id="pontuacao-final" class="pontuacao-resultado">0 <img class="icone-cruzeiro" src="../Imagens/estrela-cruzeiro.png" alt="">Cruzeiro</p>
-    <p id="resumo-resultado" class="resumo-resultado">--</p>
-    <p id="mensagem-desbloqueio" class="mensagem-desbloqueio"></p>
+    <p id="resumo-resultado" class="resumo-resultado" aria-live="polite" aria-atomic="true">--</p>
+    <ul id="lista-cobrancas" class="lista-cobrancas" aria-label="Resumo de cada cobrança"></ul>
+    <p id="mensagem-desbloqueio" class="mensagem-desbloqueio" aria-live="polite" aria-atomic="true"></p>
     <div class="pilha-botoes">
       <button id="botao-proxima-fase" class="botao botao-cta" type="button">Escolher fase 🏟️</button>
       <button id="botao-voltar-menu" class="botao" type="button">Voltar ao menu</button>

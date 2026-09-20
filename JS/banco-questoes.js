@@ -1,7 +1,14 @@
-// banco-questoes.js — banco de questoes curadas por dificuldade.
+// banco-questoes.js — banco de questoes curadas por dificuldade (HU-05).
 // Complementa o gerador aleatorio de questions.js: primeiro sorteia
 // do banco (sem repetir na mesma sessao), quando esgota cai no gerador.
-// Cada questao tem texto visual, texto falado, resultado e 5 alternativas.
+// Cada questao tem texto visual, texto falado, resultado e 5 alternativas
+// (1 correta + 4 distratoras plausíveis), uma para cada zona do gol.
+//
+// Toda questão — venha do banco curado ou do gerador de fallback — passa
+// por validarPergunta() antes de ser entregue ao jogo: nunca aceita
+// resultado inválido, alternativas repetidas, mais de uma correta ou
+// questão malformada. Isso garante que o fallback de questions.js também
+// seja seguro, como pede a HU-05.
 
 var BancoQuestoes = (function() {
 
@@ -19,6 +26,10 @@ var BancoQuestoes = (function() {
     return { texto: texto, textoFalado: textoFalado, resultado: resultado, alternativas: alts };
   }
 
+  // Pedagogia por dificuldade:
+  // - fácil: adição e subtração simples, resultados não negativos.
+  // - médio: adição, subtração e multiplicação básica.
+  // - difícil: multiplicação e divisões exatas.
   var BANCO = {
     facil: [
       function(){ return q('2 + 3', 'Quanto é 2 mais 3?', 5, [3, 4, 6, 7]); },
@@ -90,6 +101,36 @@ var BancoQuestoes = (function() {
     ]
   };
 
+  // Valida programaticamente uma questão pronta: enunciado e texto falado
+  // não vazios, resultado numérico válido (>= 0), exatamente 5 alternativas
+  // com valores únicos e numéricos válidos, exatamente uma marcada como
+  // correta, e o valor dessa alternativa batendo com o resultado.
+  function validarPergunta(p) {
+    if (!p || typeof p.texto !== 'string' || !p.texto.trim()) return false;
+    if (typeof p.textoFalado !== 'string' || !p.textoFalado.trim()) return false;
+    if (typeof p.resultado !== 'number' || !isFinite(p.resultado) || p.resultado < 0) return false;
+    if (!Array.isArray(p.alternativas) || p.alternativas.length !== 5) return false;
+
+    var valoresVistos = [];
+    var quantidadeCorretas = 0;
+    var alternativaCorreta = null;
+
+    for (var i = 0; i < p.alternativas.length; i++) {
+      var alt = p.alternativas[i];
+      if (!alt || typeof alt.valor !== 'number' || !isFinite(alt.valor) || alt.valor < 0) return false;
+      if (valoresVistos.indexOf(alt.valor) !== -1) return false; // alternativa repetida
+      valoresVistos.push(alt.valor);
+      if (alt.correta) {
+        quantidadeCorretas++;
+        alternativaCorreta = alt;
+      }
+    }
+
+    if (quantidadeCorretas !== 1) return false; // nenhuma ou mais de uma correta
+    if (!alternativaCorreta || alternativaCorreta.valor !== p.resultado) return false;
+    return true;
+  }
+
   // Controle de quais perguntas do banco ja foram usadas nesta sessao
   var usadas = { facil: [], medio: [], dificil: [] };
 
@@ -113,21 +154,64 @@ var BancoQuestoes = (function() {
       for (var j = 0; j < lista.length; j++) disponiveis.push(j);
     }
 
-    var indice = disponiveis[Math.floor(Math.random() * disponiveis.length)];
-    usadas[dificuldade].push(indice);
-    return lista[indice]();
+    // Tenta sortear uma questão válida; se por algum motivo a construída
+    // for inválida, marca como usada (pra não insistir nela) e tenta outra
+    // dentre as disponíveis, até esgotar as opções desta rodada.
+    while (disponiveis.length > 0) {
+      var pos = Math.floor(Math.random() * disponiveis.length);
+      var indice = disponiveis[pos];
+      disponiveis.splice(pos, 1);
+      usadas[dificuldade].push(indice);
+      var pergunta = lista[indice]();
+      if (validarPergunta(pergunta)) return pergunta;
+      console.warn('BancoQuestoes: questão malformada ignorada (' + dificuldade + ', índice ' + indice + ')');
+    }
+    return null;
   }
 
-  // Exporta: tenta o banco primeiro, cai no gerador se necessario
+  // Exporta: tenta o banco primeiro, cai no gerador se necessario. O
+  // gerador de fallback (questions.js) também passa pela validação — se
+  // por algum motivo gerar algo inválido, tenta mais uma vez antes de usar
+  // uma questão mínima garantida, pra nunca travar o jogo.
   function sortearPergunta(dificuldade) {
     var pergunta = obterPergunta(dificuldade);
     if (pergunta) return pergunta;
-    // Fallback pro gerador dinamico
-    return gerarPergunta(dificuldade);
+
+    pergunta = gerarPergunta(dificuldade);
+    if (validarPergunta(pergunta)) return pergunta;
+
+    console.warn('BancoQuestoes: fallback de questions.js retornou questão inválida, tentando novamente.');
+    pergunta = gerarPergunta(dificuldade);
+    if (validarPergunta(pergunta)) return pergunta;
+
+    return questaoMinimaSegura(dificuldade);
   }
+
+  // Última rede de segurança: uma questão fixa, sempre válida, usada apenas
+  // se banco e gerador falharem simultaneamente (nunca deveria acontecer).
+  function questaoMinimaSegura(dificuldade) {
+    if (dificuldade === 'dificil') return q('6 × 6', 'Quanto é 6 vezes 6?', 36, [30, 32, 40, 42]);
+    if (dificuldade === 'medio') return q('6 + 7', 'Quanto é 6 mais 7?', 13, [10, 11, 14, 15]);
+    return q('2 + 2', 'Quanto é 2 mais 2?', 4, [2, 3, 5, 6]);
+  }
+
+  // Autoverificação do banco inteiro ao carregar o módulo — apenas avisa no
+  // console em desenvolvimento; nunca interrompe o jogo.
+  (function validarBancoCompleto() {
+    Object.keys(BANCO).forEach(function(dificuldade) {
+      BANCO[dificuldade].forEach(function(fabrica, indice) {
+        var amostra;
+        try { amostra = fabrica(); } catch (e) { amostra = null; }
+        if (!validarPergunta(amostra)) {
+          console.warn('BancoQuestoes: entrada inválida no banco "' + dificuldade + '", índice ' + indice + '.');
+        }
+      });
+    });
+  })();
 
   return {
     sortearPergunta: sortearPergunta,
-    resetarSessao: resetarSessao
+    resetarSessao: resetarSessao,
+    validarPergunta: validarPergunta
   };
 })();

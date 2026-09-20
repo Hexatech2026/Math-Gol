@@ -5,8 +5,18 @@
 //
 // Desbloqueia a proxima fase ao fazer >= 2 gols na fase atual.
 // Progresso salvo em localStorage (e Firebase quando disponivel).
+//
+// HU-07: persistência versionada e tolerante a dados antigos/corrompidos.
+// O valor salvo tem o formato { versao, dados }. Registros salvos antes
+// deste versionamento (sem o campo "versao") são tratados como legado e
+// migrados no lugar, sem perder o progresso já conquistado pela criança.
+// Qualquer campo com formato inesperado é ignorado individualmente (usa
+// o padrão daquele campo) em vez de descartar o restante do progresso.
 
 var Progressao = (function() {
+
+  var CHAVE_PROGRESSAO = 'mathgol_progressao';
+  var VERSAO_PROGRESSAO = 1;
 
   var FASES = [
     {
@@ -54,21 +64,57 @@ var Progressao = (function() {
     melhorGols: {}                    // { faseId: gols }
   };
 
+  // Valida campo a campo, tolerando dados corrompidos ou de um formato
+  // antigo: cada chave só é aceita se tiver o tipo esperado, senão o valor
+  // padrão daquele campo específico é mantido (nunca descarta tudo por
+  // causa de um único campo ruim).
+  function aplicarDadosSalvos(dados) {
+    if (!dados || typeof dados !== 'object') return;
+    if (Array.isArray(dados.fasesDesbloqueadas) && dados.fasesDesbloqueadas.length &&
+        dados.fasesDesbloqueadas.every(function(id) { return typeof id === 'string'; })) {
+      progresso.fasesDesbloqueadas = dados.fasesDesbloqueadas;
+    }
+    if (dados.melhorPontuacao && typeof dados.melhorPontuacao === 'object') {
+      var pontuacaoValida = {};
+      Object.keys(dados.melhorPontuacao).forEach(function(faseId) {
+        var v = dados.melhorPontuacao[faseId];
+        if (typeof v === 'number' && isFinite(v)) pontuacaoValida[faseId] = v;
+      });
+      progresso.melhorPontuacao = pontuacaoValida;
+    }
+    if (dados.melhorGols && typeof dados.melhorGols === 'object') {
+      var golsValidos = {};
+      Object.keys(dados.melhorGols).forEach(function(faseId) {
+        var v = dados.melhorGols[faseId];
+        if (typeof v === 'number' && isFinite(v)) golsValidos[faseId] = v;
+      });
+      progresso.melhorGols = golsValidos;
+    }
+  }
+
   function carregar() {
-    try {
-      var salvo = JSON.parse(localStorage.getItem('mathgol_progressao') || '{}');
-      if (Array.isArray(salvo.fasesDesbloqueadas) && salvo.fasesDesbloqueadas.length) {
-        progresso.fasesDesbloqueadas = salvo.fasesDesbloqueadas;
-      }
-      if (salvo.melhorPontuacao) progresso.melhorPontuacao = salvo.melhorPontuacao;
-      if (salvo.melhorGols) progresso.melhorGols = salvo.melhorGols;
-    } catch(e) {}
+    var bruto;
+    try { bruto = JSON.parse(localStorage.getItem(CHAVE_PROGRESSAO)); } catch (e) { bruto = null; }
+    if (!bruto || typeof bruto !== 'object') return;
+
+    if (typeof bruto.versao === 'number' && bruto.dados) {
+      // Formato versionado atual (ou futuro — se a versão mudar, os dados
+      // ainda têm as mesmas chaves conhecidas e são aplicados campo a campo).
+      aplicarDadosSalvos(bruto.dados);
+    } else {
+      // Formato legado (pré-versionamento): o próprio objeto raiz é o
+      // "dados". Migra em vez de descartar o progresso já salvo.
+      aplicarDadosSalvos(bruto);
+    }
   }
 
   function salvar() {
     try {
-      localStorage.setItem('mathgol_progressao', JSON.stringify(progresso));
-    } catch(e) {}
+      localStorage.setItem(CHAVE_PROGRESSAO, JSON.stringify({
+        versao: VERSAO_PROGRESSAO,
+        dados: progresso
+      }));
+    } catch (e) {}
   }
 
   function obterFases() {

@@ -8,12 +8,19 @@
 // de 640x360.
 //
 // HU-12 (animação de pênalti): tweens do goleiro/bola + giro da bola e
-// pequenos efeitos de impacto (rede no gol, goleiro na defesa).
-// HU-17 (torcida animada): NÃO fica dentro do canvas do Phaser — é a
-// arquibancada em HTML/CSS (#stadium-crowd em index.html/styles.css),
-// criada por initCrowd() e acionada por reacaoTorcida() logo abaixo.
+// pequenos efeitos de impacto (rede no gol, goleiro na defesa), com uma
+// leve variação de escala na bola em voo pra sugerir profundidade.
+// HU-17 (torcida animada): arquibancada com balanço contínuo, comemoração
+// no gol e lamento na defesa/tempo esgotado; respeita prefers-reduced-motion.
 // HU-18 (personagem para o chute): batedor atrás da bola que "chuta" antes
 // da bola sair do lugar, vestindo a camisa da seleção escolhida (HU-16).
+//
+// prefers-reduced-motion: a torcida (idle) já ficava parada; agora as
+// animações "de ação" (perna do batedor, mergulho do goleiro, trajetória e
+// giro da bola, vibração da rede) também usam duração praticamente zero
+// quando o usuário pede menos movimento — a lógica e a ordem dos eventos
+// (contato -> resultado -> finalização) continuam as mesmas, só o efeito
+// visual contínuo é removido.
 
 const LARGURA_JOGO = 640;
 const ALTURA_JOGO = 360;
@@ -42,55 +49,6 @@ function corHexParaNumero(hex, fallback) {
   return isNaN(numero) ? fallback : numero;
 }
 
-// ---------- HU-17: Torcida animada (HTML/CSS, fora do canvas do Phaser) ----------
-// Vive dentro de #stadium-crowd (ver .palco-penalti em index.html), então só
-// aparece durante a fase de pênalti — as outras telas escondem essa section
-// inteira, e o navegador pausa sozinho as animações de elementos ocultos.
-// prefers-reduced-motion já é tratado de forma global em styles.css
-// (`@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }`).
-function initCrowd() {
-  const crowdContainer = document.getElementById('stadium-crowd');
-  if (!crowdContainer || crowdContainer.childElementCount > 0) return;
-
-  const NUMERO_DE_TORCEDORES = 90; // volume visual suficiente sem pesar no navegador
-  const CORES_TORCIDA = ['#e0343b', '#3a5fcd', '#fffdf6', '#2e9e5b', '#ffc63b'];
-
-  for (let i = 0; i < NUMERO_DE_TORCEDORES; i++) {
-    const torcedor = document.createElement('div');
-    torcedor.className = 'torcedor'; // Nova classe do bonequinho estilo fazendinha
-    torcedor.style.backgroundColor = CORES_TORCIDA[Math.floor(Math.random() * CORES_TORCIDA.length)];
-    torcedor.style.animationDelay = (Math.random() * 2) + 's';
-    crowdContainer.appendChild(torcedor);
-  }
-}
-
-// Chamada por chutar() (abaixo) no instante em que a cobrança termina.
-// resultado: 'gol' | 'erro'.
-let reacaoTorcidaTimeoutId = null;
-function reacaoTorcida(resultado) {
-  const crowdContainer = document.getElementById('stadium-crowd');
-  if (!crowdContainer) return;
-
-  crowdContainer.classList.remove('comemorando', 'lamentando');
-  
-  if (resultado === 'gol') {
-    crowdContainer.classList.add('comemorando');
-  } else if (resultado === 'erro') {
-    crowdContainer.classList.add('lamentando');
-  }
-
-  clearTimeout(reacaoTorcidaTimeoutId);
-  reacaoTorcidaTimeoutId = setTimeout(function() {
-    crowdContainer.classList.remove('comemorando', 'lamentando');
-  }, 3000);
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initCrowd);
-} else {
-  initCrowd();
-}
-
 function criarJogoPenalti(containerId, selecaoId) {
   let cena = null;
   let bola = null;
@@ -98,7 +56,18 @@ function criarJogoPenalti(containerId, selecaoId) {
   let rede = null;
   let batedor = null;
   let quadrilChute = null;
+  let torcida = null;
+  let tweenIdleTorcida = null;
   let emAnimacao = false;
+
+  const reduzMovimento = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  // Duração efetiva de uma animação de ação: quase instantânea (mas ainda
+  // assíncrona, pra não quebrar a cadeia de onComplete) quando o usuário
+  // pediu menos movimento; a duração normal caso contrário.
+  function d(duracaoNormal) {
+    return reduzMovimento ? 1 : duracaoNormal;
+  }
 
   // Seleção escolhida (HU-02/HU-16) define a camisa do batedor. Se a
   // seleção não for encontrada, usa uma camisa neutra sem erro (CA-16.7).
@@ -108,6 +77,12 @@ function criarJogoPenalti(containerId, selecaoId) {
   }
   const corCamisaPrimaria = corHexParaNumero(selecaoEscolhida && selecaoEscolhida.corPrimaria, CAMISA_PRIMARIA_PADRAO);
   const corCamisaSecundaria = corHexParaNumero(selecaoEscolhida && selecaoEscolhida.corSecundaria, CAMISA_SECUNDARIA_PADRAO);
+
+  // Funções de reação da torcida — atribuídas dentro de create(), chamadas
+  // a partir de chutar(). Ficam aqui embaixo para o closure de chutar()
+  // enxergar a versão mais recente.
+  let comemorarTorcida = function() {};
+  let lamentarTorcida = function() {};
 
   class CenaPenalti extends Phaser.Scene {
     constructor() {
@@ -122,6 +97,19 @@ function criarJogoPenalti(containerId, selecaoId) {
       for (let i = 0; i < 5; i++) {
         this.add.rectangle(LARGURA_JOGO / 2, 40 + i * 70, LARGURA_JOGO, 6, 0x000000, 0.05);
       }
+
+      // ---------- HU-17: Torcida animada (arquibancada atrás do gol) ----------
+      const elementosTorcida = [];
+      elementosTorcida.push(this.add.rectangle(LARGURA_JOGO / 2, 9, LARGURA_JOGO, 20, 0x1c2b3a, 1));
+      const CORES_TORCIDA = [0xe0343b, 0xffc63b, 0x3a5fcd, 0xfffdf6, 0x2e9e5b];
+      for (let i = 0; i < 46; i++) {
+        const x = 6 + i * 14;
+        elementosTorcida.push(this.add.circle(x, 5, 2.6, CORES_TORCIDA[i % CORES_TORCIDA.length]));
+        if (i % 2 === 0) {
+          elementosTorcida.push(this.add.circle(x + 7, 13, 2.6, CORES_TORCIDA[(i + 2) % CORES_TORCIDA.length]));
+        }
+      }
+      torcida = this.add.container(0, 0, elementosTorcida);
 
       // Trave (gol) — de x160 a x480, y20 a y140
       const golX = LARGURA_JOGO / 2;
@@ -166,6 +154,56 @@ function criarJogoPenalti(containerId, selecaoId) {
       const baseBola = this.add.circle(0, 0, 12, 0xfffdf6).setStrokeStyle(2, 0x21303b);
       const marcaBola = this.add.circle(4, -4, 3, 0x21303b);
       bola.add([baseBola, marcaBola]);
+
+      // Balanço contínuo e leve da torcida (CA-17.2). Em prefers-reduced-motion
+      // a torcida fica parada, só reagindo (bem discretamente) a gol/defesa.
+      if (!reduzMovimento) {
+        tweenIdleTorcida = this.tweens.add({
+          targets: torcida,
+          y: -3,
+          duration: 700,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      }
+
+      comemorarTorcida = function() {
+        if (!torcida || !cena) return;
+        if (tweenIdleTorcida) tweenIdleTorcida.pause();
+        cena.tweens.add({
+          targets: torcida,
+          y: -10,
+          scaleY: 1.15,
+          duration: reduzMovimento ? 0 : 160,
+          yoyo: true,
+          repeat: reduzMovimento ? 0 : 2,
+          ease: 'Sine.easeOut',
+          onComplete: function() {
+            torcida.setScale(1, 1);
+            torcida.y = 0;
+            if (tweenIdleTorcida) tweenIdleTorcida.resume();
+          }
+        });
+      };
+
+      lamentarTorcida = function() {
+        if (!torcida || !cena) return;
+        if (tweenIdleTorcida) tweenIdleTorcida.pause();
+        cena.tweens.add({
+          targets: torcida,
+          y: 4,
+          scaleY: 0.92,
+          duration: reduzMovimento ? 0 : 220,
+          yoyo: true,
+          ease: 'Sine.easeInOut',
+          onComplete: function() {
+            torcida.setScale(1, 1);
+            torcida.y = 0;
+            if (tweenIdleTorcida) tweenIdleTorcida.resume();
+          }
+        });
+      };
     }
   }
 
@@ -188,6 +226,7 @@ function criarJogoPenalti(containerId, selecaoId) {
     if (!bola || !goleiro) return;
     bola.setPosition(POSICAO_INICIAL_BOLA.x, POSICAO_INICIAL_BOLA.y);
     bola.angle = 0;
+    bola.setScale(1, 1);
     goleiro.setPosition(POSICAO_INICIAL_GOLEIRO.x, POSICAO_INICIAL_GOLEIRO.y);
     goleiro.setScale(1, 1);
     if (quadrilChute) quadrilChute.angle = 0;
@@ -201,21 +240,23 @@ function criarJogoPenalti(containerId, selecaoId) {
     cena.tweens.add({
       targets: quadrilChute,
       angle: 16,
-      duration: 90,
+      duration: d(90),
       ease: 'Sine.easeOut',
       onComplete: function() {
         cena.tweens.add({
           targets: quadrilChute,
           angle: -55,
-          duration: 130,
+          duration: d(130),
           ease: 'Cubic.easeIn',
           onComplete: function() {
+            // HU-09: som de chute no instante exato do contato com a bola.
+            if (typeof SFX !== 'undefined' && SFX.chute) SFX.chute();
             aoContato();
             cena.tweens.add({
               targets: quadrilChute,
               angle: 0,
-              duration: 260,
-              delay: 80,
+              duration: d(260),
+              delay: reduzMovimento ? 0 : 80,
               ease: 'Sine.easeOut'
             });
           }
@@ -248,13 +289,13 @@ function criarJogoPenalti(containerId, selecaoId) {
         targets: goleiro,
         x: destinoGoleiro.x,
         y: destinoGoleiro.y,
-        duration: 420,
+        duration: d(420),
         ease: 'Sine.easeOut',
         onComplete: function() {
           if (!correta) {
             // Pequeno "impacto" de defesa (HU-12): o goleiro encolhe ao
             // segurar a bola, sem alterar resultado nem pontuação (CA-18.4).
-            cena.tweens.add({ targets: goleiro, scaleX: 1.12, scaleY: 0.85, duration: 130, yoyo: true });
+            cena.tweens.add({ targets: goleiro, scaleX: 1.12, scaleY: 0.85, duration: d(130), yoyo: true });
           }
         }
       });
@@ -263,25 +304,38 @@ function criarJogoPenalti(containerId, selecaoId) {
       cena.tweens.add({
         targets: bola,
         angle: bola.angle + 720,
-        duration: 480,
+        duration: d(480),
         ease: 'Linear'
+      });
+
+      // Pequena sensação de profundidade: a bola "encolhe" levemente ao se
+      // afastar do batedor rumo ao gol, como se ganhasse distância da
+      // câmera (HU-12).
+      cena.tweens.add({
+        targets: bola,
+        scaleX: 0.78,
+        scaleY: 0.78,
+        duration: d(480),
+        ease: 'Sine.easeIn'
       });
 
       cena.tweens.add({
         targets: bola,
         x: destinoBola.x,
         y: destinoBola.y,
-        duration: 480,
+        duration: d(480),
         ease: 'Cubic.easeOut',
         onComplete: () => {
           emAnimacao = false;
           if (correta) {
             // Pequena "vibração" da rede ao balançar com o gol (HU-12).
-            cena.tweens.add({ targets: rede, scaleX: 1.05, scaleY: 1.05, duration: 130, yoyo: true });
+            cena.tweens.add({ targets: rede, scaleX: 1.05, scaleY: 1.05, duration: d(130), yoyo: true });
+            comemorarTorcida();
+          } else {
+            lamentarTorcida();
           }
-          reacaoTorcida(correta ? 'gol' : 'erro');
           if (aoFinalizar) aoFinalizar({ gol: correta });
-          cena.time.delayedCall(950, resetarBola);
+          cena.time.delayedCall(reduzMovimento ? 60 : 950, resetarBola);
         }
       });
     }

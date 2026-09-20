@@ -26,27 +26,178 @@
   --sombra-botao: 0 6px 0 rgba(0, 0, 0, 0.18);
 }
 
-/* Modo alto contraste: aumenta contraste geral e engrossa contornos */
+/* ==========================================================================
+   HU-08 / CA-08.2 — Alto contraste
+   Não é só troca de variáveis: cobre todas as telas e estados (menu,
+   cartões, botões, zonas do gol, pergunta, timer, feedback, resultado,
+   modal, foco por teclado, desabilitado, acerto/erro e desbloqueio),
+   garante WCAG AA (4.5:1 texto normal, 3:1 texto grande/UI) e remove
+   transparências/sombras/gradientes que atrapalhem a leitura — inclusive
+   por cima do canvas do Phaser. O modo normal mantém a identidade infantil
+   intacta: nada aqui vaza pra fora de `body.alto-contraste`.
+   ========================================================================== */
+
 body.alto-contraste {
   --branco-giz: #FFFFFF;
   --grafite: #000000;
-  --grafite-suave: #1A1A1A;
-  --verde-grama: #1C7A44;
-  --azul-ceu: #1D7EA6;
-}
-body.alto-contraste .botao,
-body.alto-contraste .cartao {
-  border-width: 4px !important;
+  --grafite-suave: #000000;
+  --verde-grama: #0B6B34;
+  --verde-grama-escuro: #0B6B34;
+  --amarelo-sol: #B45400;
+  --amarelo-sol-escuro: #7A3900;
+  --azul-ceu: #0B4C8C;
+  --azul-ceu-escuro: #063463;
 }
 
-/* Modo espacamento para dislexia: mais espaco entre letras, palavras e linhas */
+/* Fundo sólido e opaco — sem textura sutil nem cenário animado atrás do
+   conteúdo, que reduzem contraste e distraem a leitura. */
+body.alto-contraste { background-image: none; }
+body.alto-contraste .campo-animado,
+body.alto-contraste .fundo-tematico { display: none; }
+
+/* Remove sombras, gradientes e transparências que reduzem legibilidade;
+   troca por preenchimentos sólidos e bordas grossas em todo lugar. */
+body.alto-contraste * {
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+body.alto-contraste .botao,
+body.alto-contraste .botao-cta,
+body.alto-contraste .botao-secundario,
+body.alto-contraste .botao-azul,
+body.alto-contraste .cartao,
+body.alto-contraste .botao-icone,
+body.alto-contraste .botao-zona,
+body.alto-contraste .caixa-pergunta,
+body.alto-contraste .painel-acessibilidade,
+body.alto-contraste h1, body.alto-contraste h2,
+body.alto-contraste .subtitulo,
+body.alto-contraste .mensagem-feedback,
+body.alto-contraste .resumo-resultado,
+body.alto-contraste .placar-grande,
+body.alto-contraste .pontuacao-display,
+body.alto-contraste .pontuacao-resultado,
+body.alto-contraste .caixa-apelido,
+body.alto-contraste .timer-display,
+body.alto-contraste .rodape {
+  background-image: none !important;
+  background-color: var(--branco-giz);
+  color: var(--grafite);
+}
+body.alto-contraste .botao,
+body.alto-contraste .cartao,
+body.alto-contraste .botao-icone,
+body.alto-contraste .botao-zona {
+  border-width: 4px !important;
+  border-color: var(--grafite) !important;
+}
+
+/* Botões de ação principais (CTA) continuam se destacando, mas com cor
+   sólida de alto contraste em vez do gradiente amarelo. */
+body.alto-contraste .botao-cta,
+body.alto-contraste .botao-cta:hover {
+  background-color: var(--amarelo-sol-escuro);
+  color: var(--branco-giz);
+  animation: none;
+}
+body.alto-contraste .botao:hover,
+body.alto-contraste .botao-secundario:hover,
+body.alto-contraste .botao-azul:hover {
+  background-color: var(--grafite);
+  color: var(--branco-giz);
+}
+body.alto-contraste .botao-azul {
+  background-color: var(--azul-ceu);
+  color: var(--branco-giz);
+  border-color: var(--branco-giz) !important;
+}
+
+/* Cartões selecionados/bloqueados: contorno grosso + espessura maior no
+   lugar de sombra colorida. */
+body.alto-contraste .cartao-selecionado {
+  background-color: var(--grafite);
+  color: var(--branco-giz);
+  border-color: var(--branco-giz) !important;
+}
+body.alto-contraste .cartao-bloqueado { opacity: 0.7; filter: none; }
+
+/* Zonas do gol precisam continuar legíveis por cima do canvas do Phaser,
+   então ganham fundo sólido (não translúcido) e contorno bem grosso. */
+body.alto-contraste .botao-zona {
+  background-color: var(--branco-giz);
+  box-shadow: none !important;
+}
+body.alto-contraste .botao-zona.acertou {
+  background-color: var(--verde-grama);
+  color: var(--branco-giz);
+  border-color: var(--branco-giz) !important;
+}
+body.alto-contraste .botao-zona.errou {
+  background-color: #7A0000;
+  color: var(--branco-giz);
+  border-color: var(--branco-giz) !important;
+}
+body.alto-contraste .botao-zona:disabled { opacity: 0.75; }
+
+/* Acerto/erro nunca dependem só de cor: o ícone (✓ / ✗) do resumo de
+   cobranças e das zonas continua visível e com contraste garantido. */
+body.alto-contraste .item-cobranca-gol .item-cobranca-icone { color: var(--verde-grama); }
+body.alto-contraste .item-cobranca-defesa .item-cobranca-icone { color: #7A0000; }
+
+/* Timer e mensagem de desbloqueio: mantém o significado por texto e cor
+   sólida, sem pulsar (menos ruído visual em alto contraste). */
+body.alto-contraste .timer-verde { background-color: var(--verde-grama); color: var(--branco-giz); }
+body.alto-contraste .timer-amarelo { background-color: var(--amarelo-sol-escuro); color: var(--branco-giz); }
+body.alto-contraste .timer-vermelho { background-color: #7A0000; color: var(--branco-giz); animation: none; }
+body.alto-contraste .mensagem-desbloqueio { color: var(--amarelo-sol-escuro); }
+body.alto-contraste .bolinha-cobranca { border-color: var(--grafite); background: var(--branco-giz); }
+body.alto-contraste .bolinha-cobranca.acerto { background: var(--verde-grama); border-color: var(--grafite); }
+body.alto-contraste .bolinha-cobranca.erro { background: #7A0000; border-color: var(--grafite); }
+body.alto-contraste .bolinha-cobranca.atual { background: var(--amarelo-sol-escuro); border-color: var(--grafite); }
+
+/* Modal de acessibilidade: fundo opaco atrás e trilho do alternador com
+   contorno reforçado. */
+body.alto-contraste .sobreposicao { background: rgba(0,0,0,0.85); }
+body.alto-contraste .trilho-alternador { border-width: 3px; background: var(--branco-giz); }
+body.alto-contraste .alternador input:checked ~ .trilho-alternador { background: var(--verde-grama); }
+
+/* Foco por teclado: contorno bem grosso e de alto contraste, também sobre
+   o canvas do jogo. */
+body.alto-contraste .botao-icone:focus-visible,
+body.alto-contraste .botao:focus-visible,
+body.alto-contraste .botao-logo:focus-visible,
+body.alto-contraste .cartao:focus-visible,
+body.alto-contraste .botao-zona:focus-visible,
+body.alto-contraste .aba-avatar:focus-visible,
+body.alto-contraste .chip-escolha:focus-visible,
+body.alto-contraste .opcao-avatar:focus-visible {
+  outline: 5px solid #000000;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px #FFFFFF, 0 0 0 8px #000000 !important;
+}
+
+/* ==========================================================================
+   Espaçamento para dislexia
+   Só aumenta espaçamento entre letras/palavras/linhas de TEXTO lido pela
+   criança — símbolos matemáticos da pergunta, números das zonas, ícones e
+   o layout dos controles continuam estáveis, como pede a HU.
+   ========================================================================== */
 body.espaco-dislexia {
-  --espaco-letra: 0.04em;
   --interlinha: 1.9;
 }
-body.espaco-dislexia * {
-  letter-spacing: var(--espaco-letra) !important;
-  word-spacing: 0.14em !important;
+body.espaco-dislexia h1, body.espaco-dislexia h2, body.espaco-dislexia h3,
+body.espaco-dislexia p, body.espaco-dislexia label,
+body.espaco-dislexia .botao, body.espaco-dislexia .botao-ouvir-novamente,
+body.espaco-dislexia .cartao-titulo, body.espaco-dislexia .cartao-descricao,
+body.espaco-dislexia .subtitulo, body.espaco-dislexia .mensagem-feedback,
+body.espaco-dislexia .resumo-resultado, body.espaco-dislexia .caixa-apelido,
+body.espaco-dislexia .texto-apelido, body.espaco-dislexia .chip-escolha,
+body.espaco-dislexia .aba-avatar, body.espaco-dislexia .mensagem-desbloqueio,
+body.espaco-dislexia .placar-grande, body.espaco-dislexia .pontuacao-resultado,
+body.espaco-dislexia .item-cobranca-texto, body.espaco-dislexia .rodape-texto {
+  letter-spacing: 0.04em;
+  word-spacing: 0.14em;
+  line-height: 1.9;
 }
 
 * {
@@ -369,7 +520,12 @@ body {
 .botao-icone:focus-visible,
 .botao:focus-visible,
 .botao-logo:focus-visible,
-.cartao:focus-visible {
+.cartao:focus-visible,
+.botao-zona:focus-visible,
+.botao-ouvir-novamente:focus-visible,
+.aba-avatar:focus-visible,
+.chip-escolha:focus-visible,
+.opcao-avatar:focus-visible {
   outline: 4px solid var(--azul-ceu);
   outline-offset: 3px;
 }
@@ -810,13 +966,26 @@ h2 { font-size: clamp(1.25rem, 5.5vw, 1.7rem); }
 .botao-zona:active { transform: translate(-50%, -50%) translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.25); }
 .botao-zona:disabled { opacity: 0.55; cursor: not-allowed; }
 
+/* Acerto/erro nunca dependem só da cor de fundo: um ícone de texto (✓/✗)
+   e uma borda de espessura diferente reforçam o significado (CA-08.2 e
+   secao 5 do documento de melhorias). */
+.botao-zona.acertou,
+.botao-zona.errou {
+  border-width: 4px;
+}
 .botao-zona.acertou {
   background: var(--verde-grama);
   color: var(--branco-giz);
 }
+.botao-zona.acertou::after {
+  content: ' ✓';
+}
 .botao-zona.errou {
   background: var(--azul-ceu);
   color: var(--branco-giz);
+}
+.botao-zona.errou::after {
+  content: ' ✗';
 }
 
 .zona-topo-esquerda  { left: 35.94%; top: 15.28%; }
@@ -842,6 +1011,71 @@ h2 { font-size: clamp(1.25rem, 5.5vw, 1.7rem); }
   background: transparent;
   box-shadow: none;
   padding: 6px 20px;
+}
+
+/* ---------- Botão "Ouvir novamente" (Narração) ---------- */
+
+.botao-ouvir-novamente {
+  display: block;
+  margin: 10px auto 0;
+  font-family: var(--fonte-corpo);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--azul-ceu-escuro);
+  background: var(--branco-giz);
+  border: 2px solid var(--azul-ceu-escuro);
+  border-radius: 999px;
+  padding: 7px 16px;
+  cursor: pointer;
+}
+.botao-ouvir-novamente:hover { background: #E9F6FC; }
+.botao-ouvir-novamente[hidden] { display: none; }
+
+/* ---------- Resumo de cobranças (HU-07) — nunca só por cor ---------- */
+
+.lista-cobrancas {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-cobranca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: rgba(255,253,246,0.92);
+  border: 2px solid var(--grafite);
+  font-size: 0.92rem;
+  text-align: left;
+}
+
+.item-cobranca-icone {
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  width: 1.4em;
+  text-align: center;
+}
+
+.item-cobranca-gol {
+  border-color: var(--verde-grama-escuro);
+}
+.item-cobranca-gol .item-cobranca-icone { color: var(--verde-grama-escuro); }
+
+.item-cobranca-defesa {
+  border-color: #A3282C;
+}
+.item-cobranca-defesa .item-cobranca-icone { color: #A3282C; }
+
+.item-cobranca-texto {
+  color: var(--grafite);
 }
 
 /* ---------- Tela de resultado ---------- */
@@ -1170,75 +1404,4 @@ h2 { font-size: clamp(1.25rem, 5.5vw, 1.7rem); }
   border-radius: 12px;
   margin-right: 8px;
   white-space: nowrap;
-}
-
-/* ========================================================================
-   ---------- HU-17: Torcida animada (dentro do palco do pênalti) ---------- 
-   ======================================================================== */
-/* Fica por cima do canvas do Phaser, encostada no topo — como se fosse a
-   arquibancada atrás do gol. Só existe dentro de .palco-penalti (fase 1),
-   então some sozinha quando o jogador sai dessa tela. */
-#stadium-crowd {
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 18%; /* Ajustado para caber os bonequinhos com cabeca */
-  min-height: 35px;
-  background: linear-gradient(to top, #1c2b3a, transparent);
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-end; /* Bonecos ficam agrupados na base da arquibancada */
-  justify-content: center;
-  gap: 4px;
-  padding: 6px 8px;
-  overflow: hidden;
-  border-radius: var(--raio-grande) var(--raio-grande) 0 0;
-  pointer-events: none; /* nao pode atrapalhar o clique nos botoes de zona */
-}
-
-/* O corpo do bonequinho (fazendinha) */
-.torcedor {
-  width: 10px;
-  height: 16px;
-  border-radius: 3px 3px 0 0; 
-  position: relative;
-  animation: puloTorcida 2s infinite alternate ease-in-out;
-  transform-origin: bottom center;
-}
-
-/* A cabeça do bonequinho */
-.torcedor::before {
-  content: '';
-  position: absolute;
-  top: -8px;
-  left: 1px;
-  width: 8px;
-  height: 8px;
-  background-color: #E8B98C; /* Cor da pele, combinando com o goleiro no Phaser */
-  border-radius: 50%;
-}
-
-/* Estados de reação da torcida (controlados pelo game.js) */
-.comemorando .torcedor {
-  animation: golTorcida 0.4s infinite alternate !important;
-  background-color: var(--branco-giz) !important;
-}
-
-.lamentando .torcedor {
-  animation: erroTorcida 1s forwards !important;
-  opacity: 0.5;
-}
-
-@keyframes puloTorcida {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(-3px); }
-}
-
-@keyframes golTorcida {
-  0% { transform: translateY(0) scale(1); }
-  100% { transform: translateY(-10px) scale(1.15); }
-}
-
-@keyframes erroTorcida {
-  0% { transform: translateY(0) scale(1); }
-  100% { transform: translateY(8px) scale(0.9); }
 }

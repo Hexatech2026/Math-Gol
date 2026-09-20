@@ -2,6 +2,9 @@
 // Apelido TRAVADO: crianca escolhe 1 personagem + 1 animal (sem digitar).
 // v2: + efeitos sonoros (sfx.js), banco de questoes (banco-questoes.js),
 //       sistema de progressao entre fases (progressao.js).
+// v3: + acessibilidade revisada (HU-08), persistencia estruturada e
+//       versionada do resultado (HU-07) e bloqueio anti-clique-residual
+//       na fase de penalti.
 
 var estado = {
   personagemEscolhido: null,
@@ -14,6 +17,9 @@ var estado = {
   cobrancaAtual: 0,
   gols: 0,
   pontuacao: 0,
+  // HU-07: cada cobranca agora fica registrada como objeto estruturado
+  // (zona escolhida, zona correta, resultado, se estourou o tempo, pontos
+  // e tempo usado), nao mais como string solta ("gol"/"defesa").
   resultadosCobrancas: [],
   perguntaAtual: null,
   zonaCorreta: null,
@@ -21,12 +27,30 @@ var estado = {
   token: null,
   timerInicio: 0,
   timerInterval: null,
-  timerSegundos: 15
+  timerSegundos: 15,
+  // Trava para garantir que cada cobranca finalize exatamente uma vez,
+  // mesmo se o tempo esgotar bem no instante de um clique (secao 5 do
+  // documento de melhorias).
+  cobrancaFinalizada: false
 };
 
 var TOTAL_COBRANCAS = 3;
 var TIMER_MAX = 15;
 var categoriaAvatarAtiva = CATEGORIAS_AVATAR[0].id;
+
+// Rotulos amigaveis das zonas do gol, usados no resumo de cobrancas da
+// tela de resultado (HU-07) e em mensagens acessiveis por texto.
+var ROTULO_ZONA = {
+  'topo-esquerda': 'canto superior esquerdo',
+  'topo-direita': 'canto superior direito',
+  'meio': 'meio do gol',
+  'baixo-esquerda': 'canto inferior esquerdo',
+  'baixo-direita': 'canto inferior direito'
+};
+
+// Schema versionado do ultimo resultado salvo (HU-07): tolera dados
+// antigos/corrompidos sem quebrar a leitura futura desse registro.
+var VERSAO_ULTIMO_RESULTADO = 1;
 
 // URL SEMPRE com pixel-art, nunca outro estilo. Seed muda = rosto muda.
 function gerarUrlAvatar(seed) {
@@ -57,6 +81,9 @@ var TELA_ANTERIOR = {
 };
 
 function mostrarTela(idTela) {
+  // Cancela qualquer fala pendente/em andamento ao trocar de tela — evita
+  // narracao de uma tela "vazando" para a proxima (secao 1, Narracao).
+  Narracao.cancelar();
   document.querySelectorAll('.tela').forEach(function(t) { t.classList.remove('tela-ativa'); });
   document.getElementById(idTela).classList.add('tela-ativa');
   var logo = document.getElementById('logo-mini');
@@ -64,6 +91,10 @@ function mostrarTela(idTela) {
   var naTelaPrincipal = idTela === 'tela-menu';
   if (logo) logo.classList.toggle('escondido', naTelaPrincipal);
   if (botaoVoltar) botaoVoltar.classList.toggle('escondido', naTelaPrincipal);
+
+  // Botao "Ouvir novamente" so faz sentido durante a rodada de perguntas.
+  var botaoOuvir = document.getElementById('botao-ouvir-novamente');
+  if (botaoOuvir) botaoOuvir.hidden = (idTela !== 'tela-fase1');
 }
 
 // Para o timer e desmonta o jogo Phaser, se estiver rodando — usado sempre
@@ -385,6 +416,7 @@ function iniciarFase1() {
   estado.gols = 0;
   estado.pontuacao = 0;
   estado.resultadosCobrancas = [];
+  estado.cobrancaFinalizada = false;
 
   // Reseta o banco de questoes pra essa sessao
   BancoQuestoes.resetarSessao();
@@ -418,7 +450,7 @@ function atualizarBolinhasProgresso() {
     var b = document.createElement('span');
     b.className = 'bolinha-cobranca';
     if (i < estado.resultadosCobrancas.length) {
-      b.classList.add(estado.resultadosCobrancas[i] === 'gol' ? 'acerto' : 'erro');
+      b.classList.add(estado.resultadosCobrancas[i].resultado === 'gol' ? 'acerto' : 'erro');
     } else if (i === estado.cobrancaAtual) {
       b.classList.add('atual');
     }
@@ -470,17 +502,32 @@ function calcularPontosPorVelocidade() {
 }
 
 function tempoEsgotado() {
+  // Garante uma única finalização por cobrança: se o clique do jogador e o
+  // estouro do timer chegarem quase juntos, só o primeiro a passar por
+  // aqui prossegue (secao 5 do documento de melhorias).
+  if (estado.cobrancaFinalizada) return;
+  estado.cobrancaFinalizada = true;
+
   SFX.tempoEsgotado();
   document.querySelectorAll('.botao-zona').forEach(function(b) { b.disabled = true; });
-  if (estado.jogoPenalti) {
-    estado.jogoPenalti.chutar('meio', false, function() { finalizarCobranca(false); });
-  } else {
-    setTimeout(function() { finalizarCobranca(false); }, 500);
-  }
   document.getElementById('mensagem-feedback').textContent = 'Tempo esgotado!';
+  // Tempo usado = o cronometro inteiro, capturado ja (antes da animacao),
+  // pra nao inflar o valor registrado com o tempo da animacao do chute.
+  var tempoUsadoMs = TIMER_MAX * 1000;
+  if (estado.jogoPenalti) {
+    estado.jogoPenalti.chutar('meio', false, function() {
+      finalizarCobranca({ foiGol: false, zonaEscolhida: null, estourouTempo: true, tempoUsadoMs: tempoUsadoMs });
+    });
+  } else {
+    setTimeout(function() {
+      finalizarCobranca({ foiGol: false, zonaEscolhida: null, estourouTempo: true, tempoUsadoMs: tempoUsadoMs });
+    }, 500);
+  }
 }
 
 function carregarProximaPergunta() {
+  estado.cobrancaFinalizada = false;
+
   // Usa o banco de questoes com dificuldade efetiva (escala com a fase)
   var dificuldadeEfetiva = Progressao.dificuldadeEfetiva(estado.dificuldadeId, estado.faseAtual);
   estado.perguntaAtual = BancoQuestoes.sortearPergunta(dificuldadeEfetiva);
@@ -507,40 +554,78 @@ function initFase1() {
     if (!botao || botao.disabled) return;
     chutarZona(botao);
   });
+
+  // "Ouvir novamente" (secao 1, Narracao): repete a pergunta atual sem
+  // reiniciar o cronometro nem alterar nenhum outro estado do jogo.
+  var botaoOuvir = document.getElementById('botao-ouvir-novamente');
+  if (botaoOuvir) {
+    botaoOuvir.addEventListener('click', function() {
+      if (estado.perguntaAtual) Narracao.falar(estado.perguntaAtual.textoFalado);
+    });
+  }
 }
 
 function chutarZona(botaoClicado) {
+  // Mesma trava de finalização única: um clique que chegue depois que o
+  // tempo já esgotou (ou depois de outro clique) é ignorado.
+  if (estado.cobrancaFinalizada) return;
+  estado.cobrancaFinalizada = true;
+
+  // Tempo usado capturado no instante do clique — antes da animacao do
+  // chute, pra o valor registrado refletir o tempo de decisao real.
+  var tempoUsadoMs = Date.now() - estado.timerInicio;
   pararTimer();
   var zonaId = botaoClicado.getAttribute('data-zona');
   var acertou = zonaId === estado.zonaCorreta;
 
   document.querySelectorAll('.botao-zona').forEach(function(b) { b.disabled = true; });
+  // O resultado nunca depende so de cor: a classe muda a cor de fundo, mas
+  // o rotulo acessivel tambem passa a dizer "Acertou"/"Errou" por texto.
   botaoClicado.classList.add(acertou ? 'acertou' : 'errou');
+  botaoClicado.setAttribute('aria-label', (acertou ? 'Acertou! Resposta ' : 'Errou. Resposta ') + botaoClicado.textContent);
 
   if (estado.jogoPenalti) {
-    estado.jogoPenalti.chutar(zonaId, acertou, function(r) { finalizarCobranca(r.gol); });
+    estado.jogoPenalti.chutar(zonaId, acertou, function(r) {
+      finalizarCobranca({ foiGol: r.gol, zonaEscolhida: zonaId, estourouTempo: false, tempoUsadoMs: tempoUsadoMs });
+    });
   } else {
-    setTimeout(function() { finalizarCobranca(acertou); }, 500);
+    setTimeout(function() {
+      finalizarCobranca({ foiGol: acertou, zonaEscolhida: zonaId, estourouTempo: false, tempoUsadoMs: tempoUsadoMs });
+    }, 500);
   }
 }
 
-function finalizarCobranca(foiGol) {
-  if (foiGol) {
+// HU-07: registra cada cobranca como um objeto estruturado (zona escolhida,
+// zona correta, resultado, se estourou o tempo, pontos e tempo usado) em
+// vez de uma string solta — a tela de resultado usa isso para montar um
+// resumo compreensivel por crianca e acessivel por texto.
+function finalizarCobranca(detalhes) {
+  var tempoUsadoSegundos = Math.min(TIMER_MAX, Math.max(0, Math.round((detalhes.tempoUsadoMs || 0) / 1000)));
+  var pontosGanhos = 0;
+
+  if (detalhes.foiGol) {
     SFX.gol();
-    var pontos = calcularPontosPorVelocidade();
+    pontosGanhos = calcularPontosPorVelocidade();
     estado.gols++;
-    estado.pontuacao += pontos;
-    estado.resultadosCobrancas.push('gol');
-    document.getElementById('mensagem-feedback').innerHTML = 'GOOOL! +' + pontos + ' <img class="icone-cruzeiro" src="../Imagens/estrela-cruzeiro.png" alt="">Cruzeiro!';
+    estado.pontuacao += pontosGanhos;
+    document.getElementById('mensagem-feedback').innerHTML = 'GOOOL! +' + pontosGanhos + ' <img class="icone-cruzeiro" src="../Imagens/estrela-cruzeiro.png" alt="">Cruzeiro!';
     Narracao.falar('Gol!');
   } else {
     SFX.defesa();
-    estado.resultadosCobrancas.push('defesa');
     if (document.getElementById('mensagem-feedback').textContent !== 'Tempo esgotado!') {
       document.getElementById('mensagem-feedback').textContent = 'O goleiro defendeu!';
     }
-    Narracao.falar('O goleiro defendeu!');
+    Narracao.falar(detalhes.estourouTempo ? 'Tempo esgotado! O goleiro defendeu.' : 'O goleiro defendeu!');
   }
+
+  estado.resultadosCobrancas.push({
+    zonaEscolhida: detalhes.zonaEscolhida,
+    zonaCorreta: estado.zonaCorreta,
+    resultado: detalhes.foiGol ? 'gol' : 'defesa',
+    estourouTempo: !!detalhes.estourouTempo,
+    pontos: pontosGanhos,
+    tempoUsado: tempoUsadoSegundos
+  });
 
   estado.cobrancaAtual++;
   atualizarBolinhasProgresso();
@@ -559,6 +644,39 @@ function atualizarDisplayPontuacao() {
 
 // ---------- Resultado ----------
 
+// HU-07: monta o resumo de cada cobranca (zona escolhida + acerto/erro) de
+// forma compreensivel pra crianca e acessivel por texto — nunca so por
+// cor. Construido via DOM (sem innerHTML) porque os textos incluem a zona
+// escolhida pelo jogador.
+function renderizarListaCobrancas() {
+  var lista = document.getElementById('lista-cobrancas');
+  if (!lista) return;
+  lista.textContent = '';
+
+  estado.resultadosCobrancas.forEach(function(cobranca, indice) {
+    var item = document.createElement('li');
+    item.className = 'item-cobranca ' + (cobranca.resultado === 'gol' ? 'item-cobranca-gol' : 'item-cobranca-defesa');
+
+    var icone = document.createElement('span');
+    icone.className = 'item-cobranca-icone';
+    icone.setAttribute('aria-hidden', 'true');
+    icone.textContent = cobranca.resultado === 'gol' ? '✓' : '✗';
+    item.appendChild(icone);
+
+    var zonaTexto = cobranca.zonaEscolhida ? (ROTULO_ZONA[cobranca.zonaEscolhida] || cobranca.zonaEscolhida) : 'nenhuma zona (tempo esgotado)';
+    var resultadoTexto = cobranca.resultado === 'gol' ? 'gol' : 'defesa';
+    var textoCompleto = 'Cobrança ' + (indice + 1) + ' — ' + zonaTexto + ' — ' + resultadoTexto;
+    if (cobranca.estourouTempo) textoCompleto += ' (tempo esgotado)';
+
+    var texto = document.createElement('span');
+    texto.className = 'item-cobranca-texto';
+    texto.textContent = textoCompleto;
+    item.appendChild(texto);
+
+    lista.appendChild(item);
+  });
+}
+
 function irParaResultado() {
   pararTimer();
   if (estado.jogoPenalti) { estado.jogoPenalti.destruir(); estado.jogoPenalti = null; }
@@ -571,6 +689,8 @@ function irParaResultado() {
 
   var mensagem = sortearMensagemResultado(estado.gols);
   document.getElementById('resumo-resultado').textContent = mensagem;
+
+  renderizarListaCobrancas();
 
   // Mostra/esconde mensagem de desbloqueio
   var elDesbloqueio = document.getElementById('mensagem-desbloqueio');
@@ -590,11 +710,17 @@ function irParaResultado() {
   }
 
   try {
+    // HU-07: registro versionado, tolerante a leitura futura mesmo se o
+    // formato mudar de novo (quem ler, confere "versao" antes de usar).
     localStorage.setItem('mathgol_ultimo_resultado', JSON.stringify({
-      apelido: estado.apelido, selecaoId: estado.selecaoId,
-      dificuldadeId: estado.dificuldadeId, faseId: estado.faseAtual,
-      gols: estado.gols, pontuacao: estado.pontuacao,
-      data: new Date().toISOString()
+      versao: VERSAO_ULTIMO_RESULTADO,
+      dados: {
+        apelido: estado.apelido, selecaoId: estado.selecaoId,
+        dificuldadeId: estado.dificuldadeId, faseId: estado.faseAtual,
+        gols: estado.gols, pontuacao: estado.pontuacao,
+        cobrancas: estado.resultadosCobrancas,
+        data: new Date().toISOString()
+      }
     }));
   } catch (e) {}
 
