@@ -42,20 +42,20 @@ const ALCANCE_MAOS = 0.95; // do centro do tronco até as mãos, com braços par
 // Valores calibrados para a animação ser claramente perceptível (não instantânea)
 // e ao mesmo tempo manter o ritmo de jogo fluido.
 const TEMPO = {
-  CORRIDA: 620,           // batedor caminha até a marca (antes: 380)
-  PERNA_TRAS: 340,        // batedor arma o chute (antes: 200)
-  PERNA_FRENTE: 360,      // perna desce até encostar na bola (antes: 220)
-  PERNA_VOLTA: 440,       // pé volta à posição de descanso (antes: 320)
-  VOO_BOLA: 1400,         // bola da marca do pênalti até a zona (antes: 950)
+  CORRIDA: 1200,          // batedor caminha até a marca — bem visível
+  PERNA_TRAS: 600,        // batedor arma o chute lentamente
+  PERNA_FRENTE: 500,      // perna desce até encostar na bola
+  PERNA_VOLTA: 600,       // pé volta à posição de descanso
+  VOO_BOLA: 2200,         // bola voa de forma dramática até a zona
   GIRO_BOLA: 6 * Math.PI,
-  MERGULHO_GOLEIRO: 1150, // goleiro chega um pouco antes da bola (antes: 780)
-  IMPACTO_DEFESA: 300,    // impacto da defesa (antes: 200)
-  BOLA_NA_REDE: 480,      // a bola afunda na rede depois do gol (antes: 320)
-  REBOTE: 500,            // rebote na defesa (antes: 350)
-  VIBRACAO_REDE: 360,     // rede balança (antes: 220)
-  COMEMORA_TORCIDA: 2200, // torcida vibra no gol (novo)
-  LAMENTA_TORCIDA: 800,   // torcida lamenta na defesa (novo)
-  ANTES_DE_RESETAR: 2200  // pausa antes de resetar (antes: 1500)
+  MERGULHO_GOLEIRO: 1800, // goleiro mergulha acompanhando a bola
+  IMPACTO_DEFESA: 400,    // impacto da defesa (visual)
+  BOLA_NA_REDE: 700,      // a bola afunda na rede depois do gol
+  REBOTE: 700,            // rebote na defesa
+  VIBRACAO_REDE: 500,     // rede balança
+  COMEMORA_TORCIDA: 2800, // torcida vibra no gol
+  LAMENTA_TORCIDA: 1000,  // torcida lamenta na defesa
+  ANTES_DE_RESETAR: 3200  // pausa antes de resetar — dá tempo de ver o resultado
 };
 
 const CAMISA_PRIMARIA_PADRAO = 0x3a5fcd;
@@ -276,25 +276,59 @@ function criarJogoPenalti(containerId, selecaoId) {
   const sombraGoleiro = criarSombra(0.5);
   cena.add(goleiro, sombraGoleiro);
 
-  // ---------- Alto contraste: ajusta cores 3D para o goleiro não sumir ----------
+  // ---------- Alto contraste: ajusta TODAS as cores 3D para acessibilidade ----------
+  // Salva as cores originais de cada mesh para poder restaurar ao desligar.
+  var coresOriginaisGoleiro = [];
+  goleiroObj.raiz.traverse(function(child) {
+    if (child.isMesh && child.material && child.material.color) {
+      coresOriginaisGoleiro.push({ mesh: child, cor: child.material.color.getHex() });
+    }
+  });
+
+  var altoContrasteAtivo = false;
+
   function aplicarAltoContraste() {
     var ativo = document.body.classList.contains('alto-contraste');
+    if (ativo === altoContrasteAtivo) return; // sem mudança
+    altoContrasteAtivo = ativo;
+
     if (ativo) {
-      // Goleiro com camisa bem clara para contrastar com o fundo escuro
-      goleiroObj.raiz.traverse(function(child) {
-        if (child.isMesh && child.material) {
-          // Camisa escura (0x21303b) → amarelo forte para destaque
-          if (child.material.color && child.material.color.getHex() === 0x21303b) {
-            child.material.color.setHex(0xff8800);
-          }
-          // Detalhes dourados (0xffc63b) → branco para contraste
-          if (child.material.color && child.material.color.getHex() === 0xffc63b) {
-            child.material.color.setHex(0xffffff);
-          }
+      // ——— GOLEIRO: cores vibrantes sobre fundo escuro ———
+      coresOriginaisGoleiro.forEach(function(item) {
+        var hex = item.cor;
+        if (hex === 0x21303b) {
+          // Camisa/calção/meias escuras → laranja forte (contraste máximo)
+          item.mesh.material.color.setHex(0xff6600);
+        } else if (hex === 0xffc63b) {
+          // Detalhes dourados/luvas → branco puro
+          item.mesh.material.color.setHex(0xffffff);
         }
       });
-      // Fundo do cenário mais claro
-      cena.background = new THREE.Color(0x4a7fbf);
+
+      // ——— CENÁRIO: fundo de alto contraste ———
+      cena.background.setHex(0x1a3a5c); // azul bem escuro — goleiro laranja se destaca
+
+      // ——— CAMPO: faixas com mais contraste entre si ———
+      cena.children.forEach(function(child) {
+        if (child.isMesh && child.material && child.material.color) {
+          var hex = child.material.color.getHex();
+          // Degraus da arquibancada e paredão: clarear para não engolir a torcida
+          if (hex === 0x1c2b3a) child.material.color.setHex(0x2c4a6a);
+        }
+      });
+
+    } else {
+      // ——— RESTAURA tudo ao estado original ———
+      coresOriginaisGoleiro.forEach(function(item) {
+        item.mesh.material.color.setHex(item.cor);
+      });
+      cena.background.setHex(0x8ecae6);
+      cena.children.forEach(function(child) {
+        if (child.isMesh && child.material && child.material.color) {
+          var hex = child.material.color.getHex();
+          if (hex === 0x2c4a6a) child.material.color.setHex(0x1c2b3a);
+        }
+      });
     }
   }
   aplicarAltoContraste();
