@@ -144,6 +144,8 @@
     <p class="subtitulo subtitulo-curto">Chuta, acerta e faz o gol! ⚽</p>
     <div class="pilha-botoes">
       <button id="botao-jogar" class="botao botao-cta" type="button">Jogar</button>
+      <button id="botao-creditos" class="botao botao-secundario" type="button">Créditos</button>
+      <button id="botao-backup" class="botao botao-secundario" type="button">💾 Backup</button>
     </div>
   </section>
 
@@ -262,6 +264,54 @@
     </div>
     <div class="pilha-botoes" style="margin-top: 20px;">
       <button id="botao-fechar-acessibilidade" class="botao" type="button">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de créditos -->
+<div id="sobreposicao-creditos" class="sobreposicao">
+  <div class="painel-creditos">
+    <h2 style="text-align:center; margin-bottom:6px;">🏆 Créditos</h2>
+    <p class="creditos-subtitulo">Desenvolvido por</p>
+    <ul class="lista-devs">
+      <li class="dev-card">
+        <span class="dev-icone">👨‍💻</span>
+        <span class="dev-nome">Danillo Fernandes Gomes</span>
+      </li>
+      <li class="dev-card">
+        <span class="dev-icone">👨‍💻</span>
+        <span class="dev-nome">Pablo Neris Santiago</span>
+      </li>
+      <li class="dev-card">
+        <span class="dev-icone">👨‍💻</span>
+        <span class="dev-nome">Daniel Bandeira Baldini</span>
+      </li>
+    </ul>
+    <div class="creditos-instituicao">
+      <span class="inst-icone">🎓</span>
+      <span class="inst-nome">Faculdade Cruzeiro Do Sul<br>Unidade Paulista</span>
+    </div>
+    <p class="creditos-equipe">Equipe <strong>HexaTech</strong></p>
+    <div class="pilha-botoes" style="margin-top: 18px;">
+      <button id="botao-fechar-creditos" class="botao" type="button">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de backup -->
+<div id="sobreposicao-backup" class="sobreposicao">
+  <div class="painel-backup">
+    <h2 style="text-align:center; margin-bottom:12px;">💾 Backup</h2>
+    <p class="backup-descricao">Exporte seus dados do jogo ou faça backup do banco de dados.</p>
+    <div class="pilha-botoes-backup">
+      <button id="botao-backup-local" class="botao botao-cta" type="button">📥 Exportar Progresso Local</button>
+      <button id="botao-backup-firebase" class="botao" type="button">☁️ Exportar Dados do Firebase</button>
+      <button id="botao-restaurar-backup" class="botao" type="button">📤 Restaurar Backup</button>
+    </div>
+    <input type="file" id="input-restaurar" accept=".json" style="display:none">
+    <p id="backup-status" class="backup-status" aria-live="polite"></p>
+    <div class="pilha-botoes" style="margin-top: 14px;">
+      <button id="botao-fechar-backup" class="botao" type="button">Fechar</button>
     </div>
   </div>
 </div>

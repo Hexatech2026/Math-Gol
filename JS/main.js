@@ -802,6 +802,193 @@ function initAcessibilidade() {
   carregarPreferenciasAcessibilidade();
 }
 
+// ---------- Creditos ----------
+
+function initCreditos() {
+  var sobreposicao = document.getElementById('sobreposicao-creditos');
+  var botaoAbrir = document.getElementById('botao-creditos');
+  var botaoFechar = document.getElementById('botao-fechar-creditos');
+
+  if (botaoAbrir) {
+    botaoAbrir.addEventListener('click', function() {
+      SFX.clique();
+      sobreposicao.classList.add('aberta');
+    });
+  }
+  if (botaoFechar) {
+    botaoFechar.addEventListener('click', function() {
+      SFX.clique();
+      sobreposicao.classList.remove('aberta');
+    });
+  }
+  sobreposicao.addEventListener('click', function(ev) {
+    if (ev.target === sobreposicao) sobreposicao.classList.remove('aberta');
+  });
+}
+
+// ---------- Backup ----------
+
+function baixarJSON(dados, nomeArquivo) {
+  var blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = nomeArquivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function mostrarStatusBackup(texto, erro) {
+  var el = document.getElementById('backup-status');
+  if (!el) return;
+  el.textContent = texto;
+  el.classList.toggle('erro', !!erro);
+  // Limpa apos 5 segundos
+  setTimeout(function() { el.textContent = ''; }, 5000);
+}
+
+function exportarProgressoLocal() {
+  var backup = {
+    versao: 1,
+    tipo: 'mathgol-backup-local',
+    exportadoEm: new Date().toISOString(),
+    dados: {}
+  };
+
+  try {
+    // Coleta todos os dados do localStorage relacionados ao MathGol
+    var chaves = ['mathgol_token', 'mathgol_acessibilidade', 'mathgol_ultimo_resultado',
+                  'mathgol_progresso', 'mathgol_fases_desbloqueadas'];
+    for (var i = 0; i < chaves.length; i++) {
+      var valor = localStorage.getItem(chaves[i]);
+      if (valor !== null) {
+        backup.dados[chaves[i]] = valor;
+      }
+    }
+    // Busca qualquer outra chave mathgol_
+    for (var j = 0; j < localStorage.length; j++) {
+      var chave = localStorage.key(j);
+      if (chave && chave.indexOf('mathgol_') === 0 && !backup.dados[chave]) {
+        backup.dados[chave] = localStorage.getItem(chave);
+      }
+    }
+  } catch (e) {
+    console.warn('Erro ao ler localStorage:', e);
+  }
+
+  var dataStr = new Date().toISOString().slice(0, 10);
+  baixarJSON(backup, 'mathgol-backup-local-' + dataStr + '.json');
+  mostrarStatusBackup('✅ Backup local exportado com sucesso!');
+}
+
+function initBackup() {
+  var sobreposicao = document.getElementById('sobreposicao-backup');
+  var botaoAbrir = document.getElementById('botao-backup');
+  var botaoFechar = document.getElementById('botao-fechar-backup');
+  var botaoLocal = document.getElementById('botao-backup-local');
+  var botaoFirebase = document.getElementById('botao-backup-firebase');
+  var botaoRestaurar = document.getElementById('botao-restaurar-backup');
+  var inputRestaurar = document.getElementById('input-restaurar');
+
+  if (botaoAbrir) {
+    botaoAbrir.addEventListener('click', function() {
+      SFX.clique();
+      sobreposicao.classList.add('aberta');
+    });
+  }
+  if (botaoFechar) {
+    botaoFechar.addEventListener('click', function() {
+      SFX.clique();
+      sobreposicao.classList.remove('aberta');
+    });
+  }
+  sobreposicao.addEventListener('click', function(ev) {
+    if (ev.target === sobreposicao) sobreposicao.classList.remove('aberta');
+  });
+
+  // Exportar progresso local (localStorage)
+  if (botaoLocal) {
+    botaoLocal.addEventListener('click', function() {
+      SFX.selecionar();
+      exportarProgressoLocal();
+    });
+  }
+
+  // Exportar dados do Firebase
+  if (botaoFirebase) {
+    botaoFirebase.addEventListener('click', function() {
+      SFX.selecionar();
+      if (!window.FirebaseMathGol || !estado.token) {
+        mostrarStatusBackup('⚠️ Firebase não disponível.', true);
+        return;
+      }
+      mostrarStatusBackup('⏳ Exportando dados do Firebase...');
+      window.FirebaseMathGol.exportarDadosFirebase(estado.token).then(function(dados) {
+        var dataStr = new Date().toISOString().slice(0, 10);
+        baixarJSON(dados, 'mathgol-backup-firebase-' + dataStr + '.json');
+        mostrarStatusBackup('✅ Backup do Firebase exportado!');
+      }).catch(function(erro) {
+        mostrarStatusBackup('❌ Erro ao exportar: ' + erro.message, true);
+      });
+    });
+  }
+
+  // Restaurar backup
+  if (botaoRestaurar) {
+    botaoRestaurar.addEventListener('click', function() {
+      SFX.clique();
+      inputRestaurar.click();
+    });
+  }
+
+  if (inputRestaurar) {
+    inputRestaurar.addEventListener('change', function(ev) {
+      var arquivo = ev.target.files[0];
+      if (!arquivo) return;
+
+      var leitor = new FileReader();
+      leitor.onload = function(e) {
+        try {
+          var dados = JSON.parse(e.target.result);
+
+          if (dados.tipo === 'mathgol-backup-local') {
+            // Restaurar dados locais
+            var chaves = Object.keys(dados.dados || {});
+            for (var i = 0; i < chaves.length; i++) {
+              try { localStorage.setItem(chaves[i], dados.dados[chaves[i]]); } catch(err) {}
+            }
+            mostrarStatusBackup('✅ Backup local restaurado! Recarregando...');
+            setTimeout(function() { location.reload(); }, 1500);
+
+          } else if (dados.tipo === 'mathgol-backup-firebase') {
+            // Restaurar dados do Firebase
+            if (!window.FirebaseMathGol || !estado.token) {
+              mostrarStatusBackup('⚠️ Firebase não disponível.', true);
+              return;
+            }
+            mostrarStatusBackup('⏳ Restaurando dados no Firebase...');
+            window.FirebaseMathGol.restaurarDadosFirebase(estado.token, dados).then(function() {
+              mostrarStatusBackup('✅ Backup do Firebase restaurado!');
+            }).catch(function(erro) {
+              mostrarStatusBackup('❌ Erro ao restaurar: ' + erro.message, true);
+            });
+
+          } else {
+            mostrarStatusBackup('❌ Arquivo de backup não reconhecido.', true);
+          }
+        } catch (erro) {
+          mostrarStatusBackup('❌ Arquivo inválido: ' + erro.message, true);
+        }
+        // Limpa o input pra permitir selecionar o mesmo arquivo novamente
+        inputRestaurar.value = '';
+      };
+      leitor.readAsText(arquivo);
+    });
+  }
+}
+
 // ---------- Init ----------
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -814,6 +1001,8 @@ document.addEventListener('DOMContentLoaded', function() {
   initFases();
   initFase1();
   initResultado();
+  initCreditos();
+  initBackup();
   mostrarTela('tela-menu');
 
   if (window.FirebaseMathGol) {

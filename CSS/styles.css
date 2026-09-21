@@ -1266,6 +1266,174 @@ body.alto-contraste .avatar-selecionado {
   }
 }
 
+/* ---------- Botao secundario (creditos, backup no menu) ---------- */
+
+.botao-secundario {
+  background: transparent;
+  color: var(--grafite);
+  border: 2px solid var(--grafite);
+  font-size: 0.85rem;
+  padding: 8px 20px;
+  box-shadow: none;
+}
+.botao-secundario:hover {
+  background: var(--grafite);
+  color: var(--branco-giz);
+}
+body.alto-contraste .botao-secundario {
+  border-width: 3px;
+}
+
+/* ---------- Modal de creditos ---------- */
+
+.painel-creditos {
+  background: var(--branco-giz);
+  border: 3px solid var(--grafite);
+  border-radius: var(--raio-grande);
+  padding: 28px 24px;
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+}
+
+.creditos-subtitulo {
+  font-family: var(--fonte-titulo);
+  font-size: 0.9rem;
+  color: var(--grafite-suave);
+  margin-bottom: 16px;
+}
+
+.lista-devs {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dev-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(46,158,91,0.08), rgba(58,169,214,0.08));
+  border: 2px solid rgba(33,48,59,0.12);
+  border-radius: 14px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.dev-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.dev-icone {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.dev-nome {
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--grafite);
+  text-align: left;
+}
+
+.creditos-instituicao {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(255,198,59,0.15), rgba(255,198,59,0.05));
+  border: 2px solid rgba(255,198,59,0.4);
+  border-radius: 14px;
+  margin-bottom: 12px;
+}
+
+.inst-icone {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.inst-nome {
+  font-family: var(--fonte-titulo);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--grafite);
+  text-align: left;
+  line-height: 1.35;
+}
+
+.creditos-equipe {
+  font-family: var(--fonte-titulo);
+  font-size: 0.85rem;
+  color: var(--grafite-suave);
+  margin-bottom: 0;
+}
+.creditos-equipe strong {
+  color: var(--verde-grama-escuro);
+}
+
+body.alto-contraste .painel-creditos {
+  background: var(--branco-giz);
+  border-width: 4px;
+}
+body.alto-contraste .dev-card {
+  background: var(--branco-giz);
+  border-color: var(--grafite);
+}
+body.alto-contraste .creditos-instituicao {
+  background: var(--branco-giz);
+  border-color: var(--grafite);
+}
+
+/* ---------- Modal de backup ---------- */
+
+.painel-backup {
+  background: var(--branco-giz);
+  border: 3px solid var(--grafite);
+  border-radius: var(--raio-grande);
+  padding: 28px 24px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+}
+
+.backup-descricao {
+  font-size: 0.85rem;
+  color: var(--grafite-suave);
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+
+.pilha-botoes-backup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pilha-botoes-backup .botao {
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+.backup-status {
+  font-family: var(--fonte-titulo);
+  font-size: 0.85rem;
+  color: var(--verde-grama-escuro);
+  min-height: 1.5em;
+  margin-top: 12px;
+  transition: opacity 0.3s;
+}
+.backup-status.erro {
+  color: #d32f2f;
+}
+
+body.alto-contraste .painel-backup {
+  background: var(--branco-giz);
+  border-width: 4px;
+}
+
 /* ---------- Rodape com a marca ---------- */
 
 .rodape {

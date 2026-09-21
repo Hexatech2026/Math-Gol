@@ -174,11 +174,88 @@ async function buscarProgresso(token) {
   }
 }
 
+// ---------- Backup / Export ----------
+
+async function exportarDadosFirebase(token) {
+  var backup = {
+    versao: 1,
+    tipo: 'mathgol-backup-firebase',
+    exportadoEm: new Date().toISOString(),
+    token: token,
+    jogador: null,
+    resultados: [],
+    apelido: null
+  };
+
+  try {
+    // Dados do jogador
+    var jogadorSnap = await getDoc(doc(db, 'jogadores', token));
+    if (jogadorSnap.exists()) {
+      backup.jogador = jogadorSnap.data();
+    }
+
+    // Histórico de resultados (subcoleção)
+    var resultadosSnap = await getDocs(collection(doc(db, 'jogadores', token), 'resultados'));
+    resultadosSnap.forEach(function(d) {
+      backup.resultados.push({ id: d.id, ...d.data() });
+    });
+
+    // Apelido
+    var apelidoSnap = await getDoc(doc(db, 'apelidos', token));
+    if (apelidoSnap.exists()) {
+      backup.apelido = apelidoSnap.data();
+    }
+  } catch (erro) {
+    console.warn('Erro ao exportar dados do Firebase:', erro);
+    throw erro;
+  }
+
+  return backup;
+}
+
+async function restaurarDadosFirebase(token, backup) {
+  if (!backup || backup.tipo !== 'mathgol-backup-firebase') {
+    throw new Error('Arquivo de backup inválido');
+  }
+
+  try {
+    // Restaura dados do jogador
+    if (backup.jogador) {
+      await setDoc(doc(db, 'jogadores', token), {
+        ...backup.jogador,
+        restauradoEm: serverTimestamp(),
+        ultimoAcessoEm: serverTimestamp()
+      }, { merge: true });
+    }
+
+    // Restaura apelido
+    if (backup.apelido) {
+      await setDoc(doc(db, 'apelidos', token), {
+        ...backup.apelido,
+        restauradoEm: serverTimestamp()
+      }, { merge: true });
+    }
+
+    // Restaura resultados
+    for (var i = 0; i < backup.resultados.length; i++) {
+      var r = backup.resultados[i];
+      var rid = r.id;
+      delete r.id;
+      await setDoc(doc(collection(doc(db, 'jogadores', token), 'resultados'), rid), r);
+    }
+  } catch (erro) {
+    console.warn('Erro ao restaurar backup:', erro);
+    throw erro;
+  }
+}
+
 // Exporta pro escopo global pra ser usado pelo main.js (que não é módulo ES)
 window.FirebaseMathGol = {
   obterOuCriarToken,
   carregarConfiguracoes,
   salvarPerfil,
   salvarProgresso,
-  buscarProgresso
+  buscarProgresso,
+  exportarDadosFirebase,
+  restaurarDadosFirebase
 };
