@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-<title>MathGol — Cobrança de pênalti com matemática</title>
+<title>MathGol — Futebol com matemática</title>
 <meta name="description" content="MathGol: fase de pênaltis com perguntas de matemática, para crianças.">
 
 <link rel="icon" type="image/x-icon" href="../Imagens/favicon.ico">
@@ -17,7 +17,7 @@
 <body>
 
 <div class="campo-animado" aria-hidden="true">
-  <svg class="cena-gol" viewBox="0 0 400 900" preserveAspectRatio="xMidYMid slice">
+  <svg class="cena-gol" viewBox="0 0 400 900" preserveAspectRatio="xMidYMax slice">
     <defs>
       <linearGradient id="ceuGrad" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="#0B1E3D"/>
@@ -274,24 +274,108 @@
     <h2 style="text-align:center; margin-bottom:6px;">🏆 Créditos</h2>
     <p class="creditos-subtitulo">Desenvolvido por</p>
     <ul class="lista-devs">
+
       <li class="dev-card">
-        <span class="dev-icone">👨‍💻</span>
-        <span class="dev-nome">Danillo Fernandes Gomes</span>
+        <div class="dev-linha">
+          <span class="dev-icone">💻</span>
+          <span class="dev-info">
+            <span class="dev-nome">Danillo Fernandes Gomes</span>
+            <span class="dev-papel">Full Stack ⚽</span>
+          </span>
+          <button class="botao-sobre-mim" type="button"
+                  aria-expanded="false" aria-controls="bio-danillo"
+                  aria-label="Sobre mim: Danillo Fernandes Gomes">
+            <svg class="icone-sobre-mim" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.2"/>
+              <circle cx="12" cy="7.4" r="1.5" fill="currentColor"/>
+              <path d="M12 11v6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+            <span class="rotulo-sobre-mim">Sobre mim</span>
+          </button>
+        </div>
+        <div id="bio-danillo" class="dev-bio" hidden>
+          <p>E aí, pequenos craques! Tudo certo? 😄</p>
+          <p>Eu sou o <strong>Danillo</strong>, tenho 22 anos e meus amigos me chamam de <strong>D</strong>! Sou apaixonado por tecnologia, futebol, jogos e por transformar ideias em coisas de verdade. 🚀</p>
+          <p>No MathGol, minha missão como Full Stack foi ajudar a construir o jogo por dentro e por fora! 👨🏻‍💻 Cuidei de partes que vocês conseguem ver na tela e também daquelas que ficam escondidas nos bastidores, fazendo tudo funcionar quando vocês jogam. É quase como ser um jogador que ajuda no ataque e na defesa! ⚽😂</p>
+          <p>Foi muito legal transformar as ideias da nossa equipe em um jogo de verdade. Agora o código fica com a gente… mas a bola está com vocês! 🏟️🎮</p>
+          <p class="dev-recado">🏆 Recado do D: não tenha medo de errar uma jogada! Tente, aprenda e tente de novo. Todo grande craque começou dando o primeiro chute — e quem sabe a próxima grande ideia não começa com você? 🚀⭐</p>
+        </div>
       </li>
+
       <li class="dev-card">
-        <span class="dev-icone">👨‍💻</span>
-        <span class="dev-nome">Pablo Neris Santiago</span>
+        <div class="dev-linha">
+          <span class="dev-icone">⚽</span>
+          <span class="dev-info">
+            <span class="dev-nome">Pablo Neris Santiago</span>
+            <span class="dev-papel">Product Owner ⚽</span>
+          </span>
+          <button class="botao-sobre-mim" type="button"
+                  aria-expanded="false" aria-controls="bio-pablo"
+                  aria-label="Sobre mim: Pablo Neris Santiago">
+            <svg class="icone-sobre-mim" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.2"/>
+              <circle cx="12" cy="7.4" r="1.5" fill="currentColor"/>
+              <path d="M12 11v6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+            <span class="rotulo-sobre-mim">Sobre mim</span>
+          </button>
+        </div>
+        <div id="bio-pablo" class="dev-bio" hidden>
+          <p>Olá! Tudo bem com vocês? Meu nome é <strong>Pablo Neris Santiago</strong>, tenho 22 anos e meus amigos me chamam de <strong>Pablinho</strong>. 😄</p>
+          <p>Gosto muito de jogar bola, ir à academia e jogar videogame. Neste projeto, fui o capitão do time: ajudei a organizar as ideias para que o jogo ficasse do jeitinho que vocês merecem!</p>
+          <p>Espero que vocês aprendam e se divirtam muito jogando.</p>
+          <p class="dev-recado">🏆 Lembre-se: todo craque um dia errou um chute. Quem treina, aprende. E quem aprende, vira campeão!</p>
+        </div>
       </li>
+
       <li class="dev-card">
-        <span class="dev-icone">👨‍💻</span>
-        <span class="dev-nome">Daniel Bandeira Baldini</span>
+        <div class="dev-linha">
+          <span class="dev-icone">🎮</span>
+          <span class="dev-info">
+            <span class="dev-nome">Daniel Bandeira Baldini</span>
+            <span class="dev-papel">Scrum + QA 🏃🏻‍♂️</span>
+          </span>
+          <button class="botao-sobre-mim" type="button"
+                  aria-expanded="false" aria-controls="bio-daniel"
+                  aria-label="Sobre mim: Daniel Bandeira Baldini">
+            <svg class="icone-sobre-mim" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.2"/>
+              <circle cx="12" cy="7.4" r="1.5" fill="currentColor"/>
+              <path d="M12 11v6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+            <span class="rotulo-sobre-mim">Sobre mim</span>
+          </button>
+        </div>
+        <div id="bio-daniel" class="dev-bio" hidden>
+          <p>Olá, pequenos jogadores! 😄</p>
+          <p>Como vocês viram, me chamo Daniel e tenho <strong>20 anos</strong>, mas meus amigos me chamam de <strong>Bal</strong>! Sou fã de tecnologia, jogos e de inventar coisas novas.</p>
+          <p>Neste projeto, minha missão foi ajudar a equipe a organizar as ideias e testar o jogo. Afinal, alguém precisava descobrir se os bugs eram inimigos secretos ou só problemas mesmo! 🐛😂</p>
+          <p>Foi muito divertido criar essa aventura com meus amigos, mas agora chegou a vez de vocês jogarem!</p>
+          <p class="dev-recado">🏆 Aventureiros: usem a imaginação, apertem os botões e preparem-se para se divertir! Quem sabe o próximo grande criador de jogos não está jogando agora? 🎮⭐</p>
+        </div>
       </li>
+
     </ul>
+
+    <button id="botao-ver-equipe" class="botao-ver-equipe" type="button"
+            aria-expanded="false" aria-controls="bloco-foto-equipe">
+      <svg class="icone-sobre-mim" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="8.2" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M5 20c0-3.6 3.1-6.2 7-6.2s7 2.6 7 6.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="rotulo-ver-equipe">Ver equipe</span>
+    </button>
+    <div id="bloco-foto-equipe" class="bloco-foto-equipe" hidden>
+      <figure class="foto-equipe">
+        <img src="../Imagens/Nos.jpg" alt="Foto da equipe HexaTech" class="foto-equipe-img">
+        <figcaption class="foto-equipe-legenda">A equipe HexaTech 👋</figcaption>
+      </figure>
+    </div>
+
     <div class="creditos-instituicao">
       <span class="inst-icone">🎓</span>
       <span class="inst-nome">Faculdade Cruzeiro Do Sul<br>Unidade Paulista</span>
     </div>
-    <p class="creditos-equipe">Equipe <strong>HexaTech</strong></p>
     <div class="pilha-botoes" style="margin-top: 18px;">
       <button id="botao-fechar-creditos" class="botao" type="button">Fechar</button>
     </div>
@@ -332,5 +416,21 @@
 <script src="../JS/game.js"></script>
 <script src="../JS/progressao.js"></script>
 <script src="../JS/main.js"></script>
+
+<!-- Alterna a foto da equipe no modal de créditos (sem depender do main.js) -->
+<script>
+(function () {
+  var botao = document.getElementById('botao-ver-equipe');
+  var bloco = document.getElementById('bloco-foto-equipe');
+  var rotulo = botao ? botao.querySelector('.rotulo-ver-equipe') : null;
+  if (!botao || !bloco) return;
+  botao.addEventListener('click', function () {
+    var aberto = botao.getAttribute('aria-expanded') === 'true';
+    botao.setAttribute('aria-expanded', String(!aberto));
+    bloco.hidden = aberto;
+    if (rotulo) rotulo.textContent = aberto ? 'Ver equipe' : 'Ocultar equipe';
+  });
+})();
+</script>
 </body>
 </html>
