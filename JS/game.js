@@ -42,20 +42,20 @@ const ALCANCE_MAOS = 0.95; // do centro do tronco até as mãos, com braços par
 // Valores calibrados para a animação ser claramente perceptível (não instantânea)
 // e ao mesmo tempo manter o ritmo de jogo fluido.
 const TEMPO = {
-  CORRIDA: 860,           // batedor caminha até a marca
-  PERNA_TRAS: 430,        // batedor arma o chute
-  PERNA_FRENTE: 360,      // perna desce até encostar na bola
-  PERNA_VOLTA: 430,       // pé volta à posição de descanso
-  VOO_BOLA: 1580,         // bola voa até a zona
+  CORRIDA: 760,           // batedor caminha até a marca
+  PERNA_TRAS: 300,        // batedor arma o chute
+  PERNA_FRENTE: 280,      // perna desce até encostar na bola
+  PERNA_VOLTA: 290,       // pé volta à posição de descanso
+  VOO_BOLA: 1200,         // bola voa até a zona
   GIRO_BOLA: 5 * Math.PI,
-  MERGULHO_GOLEIRO: 1300, // goleiro mergulha acompanhando a bola
-  IMPACTO_DEFESA: 290,    // impacto da defesa (visual)
-  BOLA_NA_REDE: 500,      // a bola afunda na rede depois do gol
-  REBOTE: 500,            // rebote na defesa
-  VIBRACAO_REDE: 360,     // rede balança
-  COMEMORA_TORCIDA: 2000, // torcida vibra no gol
+  MERGULHO_GOLEIRO: 1000, // goleiro mergulha acompanhando a bola
+  IMPACTO_DEFESA: 250,    // impacto da defesa (visual)
+  BOLA_NA_REDE: 300,      // a bola afunda na rede depois do gol
+  REBOTE: 450,            // rebote na defesa
+  VIBRACAO_REDE: 260,     // rede balança
+  COMEMORA_TORCIDA: 1600, // torcida vibra no gol
   LAMENTA_TORCIDA: 720,   // torcida lamenta na defesa
-  ANTES_DE_RESETAR: 2300  // pausa antes de resetar — dá tempo de ver o resultado
+  ANTES_DE_RESETAR: 1800  // pausa antes de resetar — dá tempo de ver o resultado
 };
 
 const CAMISA_PRIMARIA_PADRAO = 0x3a5fcd;
