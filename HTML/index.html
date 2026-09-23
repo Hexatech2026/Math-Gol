@@ -10,7 +10,9 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<!-- Fontes sem bloquear a página: se o Google Fonts travar, o jogo abre
+     com as fontes do sistema (media="print" + onload troca para "all"). -->
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 
 <link rel="stylesheet" href="../CSS/styles.css">
 </head>
@@ -128,7 +130,10 @@
         <img id="logo-mini" class="marca-logo" src="../Imagens/hexatech-logo.png" alt="HexaTech">
       </button>
     </div>
-    <button id="botao-acessibilidade" class="botao-icone" type="button" aria-label="Abrir opções de acessibilidade">♿</button>
+    <div class="topo-direita">
+      <button id="botao-tela-cheia" class="botao-icone" type="button" aria-label="Entrar em tela cheia" aria-pressed="false">⛶</button>
+      <button id="botao-acessibilidade" class="botao-icone" type="button" aria-label="Abrir opções de acessibilidade">♿</button>
+    </div>
   </div>
 
   <section id="tela-menu" class="tela tela-menu">
@@ -199,32 +204,69 @@
     </div>
   </section>
 
-  <section id="tela-fase1" class="tela">
+  <section id="tela-fase1" class="tela tela-fase1">
     <div class="barra-fase">
-      <span id="titulo-fase" class="titulo-fase">⚽ Pênaltis</span>
-      <div id="cabecalho-fase" class="cabecalho-fase"></div>
+      <span id="titulo-fase" class="titulo-fase" data-titulo-tela>⚽ Pênaltis</span>
+      <div id="cabecalho-fase" class="cabecalho-fase" role="img" aria-label="Cobranças"></div>
       <span id="timer-display" class="timer-display timer-verde">15s</span>
       <span id="pontuacao-display" class="pontuacao-display">0 <img class="icone-cruzeiro" src="../Imagens/estrela-cruzeiro.png" alt="estrelinhas Cruzeiro"></span>
     </div>
-    <div class="caixa-pergunta">
-      <p id="pergunta-texto" class="pergunta-texto" aria-live="polite" aria-atomic="true">--</p>
-      <button id="botao-ouvir-novamente" class="botao-ouvir-novamente" type="button" aria-label="Ouvir a pergunta novamente" hidden>🔊 Ouvir novamente</button>
-    </div>
-    <div class="palco-penalti">
-      <div id="jogo-penalti"></div>
-      <div id="zonas-gol" class="zonas-gol">
-        <button class="botao-zona zona-topo-esquerda" type="button" data-zona="topo-esquerda">--</button>
-        <button class="botao-zona zona-topo-direita" type="button" data-zona="topo-direita">--</button>
-        <button class="botao-zona zona-meio" type="button" data-zona="meio">--</button>
-        <button class="botao-zona zona-baixo-esquerda" type="button" data-zona="baixo-esquerda">--</button>
-        <button class="botao-zona zona-baixo-direita" type="button" data-zona="baixo-direita">--</button>
+
+    <!-- Layout adaptativo: em retrato, pergunta → campo → controles; em
+         paisagem/desktop, campo à esquerda e pergunta + controles à direita.
+         A superfície inteira recebe Pointer Events e teclado nas etapas de
+         mira, altura e força (botões dentro dela são ignorados). -->
+    <div id="superficie-jogo" class="layout-partida" tabindex="-1"
+         role="group" aria-label="Campo do pênalti" aria-describedby="instrucoes-jogo">
+      <div class="caixa-pergunta">
+        <p id="pergunta-texto" class="pergunta-texto" aria-live="polite" aria-atomic="true">--</p>
+        <button id="botao-ouvir-novamente" class="botao-ouvir-novamente" type="button" aria-label="Ouvir a pergunta novamente" hidden>🔊 Ouvir novamente</button>
+      </div>
+
+      <div class="palco-penalti">
+        <div id="jogo-penalti"></div>
+        <div id="camada-mira" class="camada-mira" hidden>
+          <div id="alvo-mira" class="alvo-mira" aria-hidden="true"></div>
+        </div>
+        <p id="incentivo-jogo" class="incentivo-jogo" aria-hidden="true" hidden></p>
+        <p id="aviso-modo-jogo" class="aviso-modo-jogo" role="status" hidden></p>
+      </div>
+
+      <div class="painel-etapa">
+        <p id="mensagem-etapa" class="mensagem-etapa" aria-live="polite" aria-atomic="true" hidden>--</p>
+        <p id="instrucoes-jogo" class="somente-leitor-tela" aria-live="polite"></p>
+
+        <div class="bloco-barra bloco-altura" id="bloco-altura" hidden>
+          <span class="rotulo-forca">Tipo de chute (altura)</span>
+          <div class="trilho-forca trilho-altura" aria-hidden="true">
+            <div class="divisoes-altura"><span></span><span></span></div>
+            <div id="preenchimento-altura" class="preenchimento-forca preenchimento-altura"></div>
+          </div>
+          <div class="legenda-altura" aria-hidden="true">
+            <span>⬇️ Rasteiro</span><span>⚽ Meia-altura</span><span>☁️ Cavadinha</span>
+          </div>
+        </div>
+
+        <div class="bloco-barra bloco-forca" id="bloco-forca" hidden>
+          <span class="rotulo-forca">Força <span id="tipo-escolhido" class="tipo-escolhido"></span></span>
+          <div class="trilho-forca" aria-hidden="true">
+            <div id="faixa-ideal-forca" class="faixa-ideal-forca"><span class="marcador-ideal">ideal</span></div>
+            <div id="preenchimento-forca" class="preenchimento-forca"></div>
+          </div>
+          <span id="dica-forca" class="dica-forca">Pare na faixa verde "ideal"! Toque, clique ou aperte Enter.</span>
+        </div>
+
+        <div id="area-respostas" class="area-respostas">
+          <div id="respostas-alternativas" class="respostas-alternativas"></div>
+        </div>
+
+        <p id="mensagem-feedback" class="mensagem-feedback" aria-live="polite" aria-atomic="true"></p>
       </div>
     </div>
-    <p id="mensagem-feedback" class="mensagem-feedback" aria-live="polite" aria-atomic="true"></p>
   </section>
 
   <section id="tela-resultado" class="tela">
-    <h2>Fim da Fase 1!</h2>
+    <h2 id="titulo-resultado">Fim da fase Pênaltis!</h2>
     <p id="placar-final" class="placar-grande">0 / 3</p>
     <p id="pontuacao-final" class="pontuacao-resultado">0 <img class="icone-cruzeiro" src="../Imagens/estrela-cruzeiro.png" alt="">Cruzeiro</p>
     <p id="resumo-resultado" class="resumo-resultado" aria-live="polite" aria-atomic="true">--</p>
@@ -243,9 +285,9 @@
   <img class="rodape-logo" src="../Imagens/hexatech-logo.png" alt="HexaTech">
 </footer>
 
-<div id="sobreposicao-acessibilidade" class="sobreposicao">
-  <div class="painel-acessibilidade">
-    <h2 style="text-align:left; margin-bottom:16px;">Acessibilidade</h2>
+<div id="sobreposicao-acessibilidade" class="sobreposicao" aria-hidden="true">
+  <div class="painel-acessibilidade" role="dialog" aria-modal="true" aria-labelledby="titulo-acessibilidade">
+    <h2 id="titulo-acessibilidade" style="text-align:left; margin-bottom:16px;">Acessibilidade</h2>
     <div class="linha-opcao">
       <label for="opcao-alto-contraste">Alto contraste</label>
       <span class="alternador"><input type="checkbox" id="opcao-alto-contraste"><span class="trilho-alternador"></span></span>
@@ -269,9 +311,9 @@
 </div>
 
 <!-- Modal de créditos -->
-<div id="sobreposicao-creditos" class="sobreposicao">
-  <div class="painel-creditos">
-    <h2 style="text-align:center; margin-bottom:6px;">🏆 Créditos</h2>
+<div id="sobreposicao-creditos" class="sobreposicao" aria-hidden="true">
+  <div class="painel-creditos" role="dialog" aria-modal="true" aria-labelledby="titulo-creditos">
+    <h2 id="titulo-creditos" style="text-align:center; margin-bottom:6px;">🏆 Créditos</h2>
     <p class="creditos-subtitulo">Desenvolvido por</p>
     <ul class="lista-devs">
 
@@ -383,16 +425,16 @@
 </div>
 
 <!-- Modal de backup -->
-<div id="sobreposicao-backup" class="sobreposicao">
-  <div class="painel-backup">
-    <h2 style="text-align:center; margin-bottom:12px;">💾 Backup</h2>
+<div id="sobreposicao-backup" class="sobreposicao" aria-hidden="true">
+  <div class="painel-backup" role="dialog" aria-modal="true" aria-labelledby="titulo-backup">
+    <h2 id="titulo-backup" style="text-align:center; margin-bottom:12px;">💾 Backup</h2>
     <p class="backup-descricao">Exporte seus dados do jogo ou faça backup do banco de dados.</p>
     <div class="pilha-botoes-backup">
       <button id="botao-backup-local" class="botao botao-cta" type="button">📥 Exportar Progresso Local</button>
       <button id="botao-backup-firebase" class="botao" type="button">☁️ Exportar Dados do Firebase</button>
       <button id="botao-restaurar-backup" class="botao" type="button">📤 Restaurar Backup</button>
     </div>
-    <input type="file" id="input-restaurar" accept=".json" style="display:none">
+    <input type="file" id="input-restaurar" accept=".json,application/json" hidden>
     <p id="backup-status" class="backup-status" aria-live="polite"></p>
     <div class="pilha-botoes" style="margin-top: 14px;">
       <button id="botao-fechar-backup" class="botao" type="button">Fechar</button>
@@ -400,13 +442,14 @@
   </div>
 </div>
 
-<!-- Firebase (módulo ES — carrega antes dos scripts do jogo) -->
-<script type="module" src="../JS/firebase-config.js"></script>
-
-<!-- Three.js r149 (CDN, build UMD — degrada graciosamente se falhar) -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<!-- Dependências externas (Three.js e Firebase) são carregadas SEM bloquear
+     a página por JS/carregar-externos.js: se um CDN travar, o menu abre
+     normalmente; sem Three.js o jogo usa o modo simplificado 2D e sem
+     Firebase ele só não salva na nuvem. -->
 
 <!-- Scripts do jogo (ordem importa) -->
+<script src="../JS/regras-chute.js"></script>
+<script src="../JS/backup-validacao.js"></script>
 <script src="../JS/data.js"></script>
 <script src="../JS/avatar-data.js"></script>
 <script src="../JS/questions.js"></script>
@@ -414,8 +457,10 @@
 <script src="../JS/narration.js"></script>
 <script src="../JS/sfx.js"></script>
 <script src="../JS/game.js"></script>
+<script src="../JS/game-2d.js"></script>
 <script src="../JS/progressao.js"></script>
 <script src="../JS/main.js"></script>
+<script src="../JS/carregar-externos.js"></script>
 
 <!-- Alterna a foto da equipe no modal de créditos (sem depender do main.js) -->
 <script>
