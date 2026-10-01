@@ -466,24 +466,24 @@ body {
   stroke: var(--grafite);
   stroke-width: 0.8px;
   opacity: 0;
-  animation: aparecer-gol 5s ease-in-out infinite;
+  animation: aparecer-gol 3.6s ease-in-out infinite;
 }
 
 .perna-chute {
   transform-box: fill-box;
   transform-origin: 50% 0%;
-  animation: chutar-perna 5s ease-in-out infinite;
+  animation: chutar-perna 3.6s ease-in-out infinite;
 }
 
 .bola {
   transform-box: view-box;
-  animation: chutar-bola 5s ease-in-out infinite;
+  animation: chutar-bola 3.6s ease-in-out infinite;
   filter: drop-shadow(0 0 3px rgba(255,227,138,0.9));
 }
 
 .bola-eco {
   transform-box: view-box;
-  animation: chutar-bola 5s ease-in-out infinite;
+  animation: chutar-bola 3.6s ease-in-out infinite;
 }
 .bola-eco-1 { animation-delay: -0.09s; opacity: 0.5; }
 .bola-eco-2 { animation-delay: -0.18s; opacity: 0.3; }
@@ -492,7 +492,7 @@ body {
 .goleiro {
   transform-box: fill-box;
   transform-origin: 50% 100%;
-  animation: goleiro-pular 5s ease-in-out infinite;
+  animation: goleiro-pular 3.6s ease-in-out infinite;
 }
 
 @keyframes chutar-perna {
@@ -687,10 +687,14 @@ h2 { font-size: clamp(1.25rem, 5.5vw, 1.7rem); }
   animation: pulsar-cta 1.8s ease-in-out infinite;
 }
 .botao-cta:hover { background: var(--amarelo-sol-escuro); }
+/* v1.5 (bug de botao): o pulso animava "transform" e anulava o
+   translateY do :active — o CTA nao "afundava" ao ser tocado. Agora o
+   pulso usa a propriedade independente "scale". */
 @keyframes pulsar-cta {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.045); }
+  0%, 100% { scale: 1; }
+  50% { scale: 1.045; }
 }
+.botao-cta:active { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) {
   .botao-cta { animation: none; }
 }
@@ -701,6 +705,17 @@ h2 { font-size: clamp(1.25rem, 5.5vw, 1.7rem); }
   transform: none;
   box-shadow: var(--sombra-botao);
 }
+/* v1.5 (bug de botao): desabilitado nao reage a hover/toque (antes mudava
+   de cor e "afundava", parecendo que ia funcionar). */
+.botao:disabled:hover {
+  background: linear-gradient(180deg, #FFD65C 0%, var(--amarelo-sol) 100%);
+}
+.botao:disabled:active {
+  transform: none;
+  box-shadow: var(--sombra-botao);
+}
+.cartao:disabled:hover,
+.cartao:disabled:active { transform: none; }
 
 .pilha-botoes {
   display: flex;
@@ -894,7 +909,8 @@ h2 { font-size: clamp(1.25rem, 5.5vw, 1.7rem); }
   padding: 8px 14px;
   cursor: pointer;
 }
-.aba-avatar-ativa {
+.aba-avatar-ativa,
+.aba-avatar.aba-ativa {
   background: var(--verde-texto);
   color: var(--branco-giz);
   border-color: var(--grafite);
@@ -2433,7 +2449,7 @@ body.alto-contraste .preenchimento-altura { background: var(--grafite); }
   pointer-events: none;
   z-index: 2;
 }
-.incentivo-jogo.animar { animation: incentivo-entra 1.6s ease-out both; }
+.incentivo-jogo.animar { animation: incentivo-entra 1.1s ease-out both; }
 @keyframes incentivo-entra {
   0% { opacity: 0; transform: translate(-50%, 10px); }
   15%, 80% { opacity: 1; transform: translate(-50%, 0); }
@@ -2504,4 +2520,587 @@ body.alto-contraste .preenchimento-altura { background: var(--grafite); }
   .legenda-altura { font-size: 0.66rem; margin-top: 1px; }
   .bloco-barra .rotulo-forca { font-size: 0.75rem; margin-bottom: 2px; }
   .painel-etapa { gap: 4px; }
+}
+
+/* ==========================================================================
+   v1.5 — Carteira de Cruzeiros, Loja, escudos de clube e Tutorial
+   ========================================================================== */
+
+/* ---------- Saldo no topo ---------- */
+.botao-saldo {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 4px 12px 4px 6px;
+  border: 3px solid var(--grafite);
+  border-radius: 999px;
+  background: var(--branco-giz);
+  color: var(--grafite);
+  font-family: var(--fonte-titulo);
+  font-weight: 700;
+  font-size: 1.05rem;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.18);
+  transition: transform 0.08s ease;
+}
+.botao-saldo:hover { background: #FFF6DA; }
+.botao-saldo:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.18); }
+.botao-saldo:focus-visible { outline: 4px solid var(--azul-ceu); outline-offset: 3px; }
+.botao-saldo[hidden] { display: none; }
+.botao-saldo .icone-cruzeiro { height: 1.4em; margin: 0 2px 0 0; }
+
+@media (max-width: 420px) {
+  .topo { padding: 12px 12px; }
+  .topo-esquerda, .topo-direita { gap: 6px; }
+  .topo .botao-icone { width: 42px; height: 42px; font-size: 1.15rem; }
+  .botao-voltar { width: 40px; height: 40px; }
+  .marca-logo { height: 28px; }
+  .botao-saldo { min-height: 40px; padding: 2px 9px 2px 4px; font-size: 0.95rem; }
+}
+
+/* ---------- Menu: Como jogar + Loja ---------- */
+.linha-botoes-menu {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 360px;
+}
+.linha-botoes-menu .botao { flex: 1; padding: 10px 8px; font-size: 0.98rem; min-height: 48px; }
+.botao-menu-tutorial {
+  background: linear-gradient(180deg, #FFFFFF 0%, #E9F6FC 100%);
+  border-color: var(--azul-texto);
+  color: var(--azul-texto);
+}
+.botao-menu-tutorial:hover { background: #D6EEF8; }
+.botao-menu-loja {
+  background: linear-gradient(180deg, #FFB86B 0%, #F28C28 100%);
+  color: var(--grafite);
+}
+.botao-menu-loja:hover { background: linear-gradient(180deg, #F7A04A 0%, #DD7A17 100%); }
+
+/* Link "ir a loja" (dentro das telas de escolha) */
+.botao-link-loja {
+  margin-top: 14px;
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--azul-texto);
+  background: rgba(255,253,246,0.95);
+  border: 2px dashed var(--azul-texto);
+  border-radius: 999px;
+  padding: 10px 18px;
+  min-height: 44px;
+  cursor: pointer;
+  max-width: 100%;
+}
+.botao-link-loja:hover { background: #E9F6FC; border-style: solid; }
+.botao-link-loja:focus-visible { outline: 4px solid var(--azul-ceu); outline-offset: 3px; }
+.botao-link-loja[hidden] { display: none; }
+
+/* Nome comprado na Loja ganha um brilho discreto na lista de chips */
+.chip-escolha.chip-comprado:not(.chip-ativo) { border-color: #C97A1A; background: #FFF6E3; }
+
+/* ---------- Escudo generico de clube ---------- */
+.escudo-clube {
+  --cor-1: #21303B;
+  --cor-2: #FFFDF6;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 60px;
+  clip-path: polygon(0 0, 100% 0, 100% 62%, 50% 100%, 0 62%);
+  background: linear-gradient(90deg, var(--cor-1) 0 50%, var(--cor-2) 50% 100%);
+  filter: drop-shadow(0 2px 0 rgba(0,0,0,0.3));
+}
+.escudo-clube::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  clip-path: polygon(0 0, 100% 0, 100% 62%, 50% 100%, 0 62%);
+  background: linear-gradient(90deg, var(--cor-1) 0 50%, var(--cor-2) 50% 100%);
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,0.25);
+}
+.escudo-sigla {
+  position: relative;
+  margin-top: -10px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--cor-1);
+  font-family: var(--fonte-titulo);
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  outline: 2px solid rgba(255,255,255,0.65);
+}
+.subtitulo-clubes { margin-top: 20px; }
+#grade-clubes[hidden], #titulo-clubes[hidden] { display: none; }
+.tela-selecao .subtitulo-secao, #tela-selecao .subtitulo-secao {
+  background: rgba(255,253,246,0.94);
+  padding: 4px 14px;
+  border-radius: 999px;
+}
+
+/* ---------- Tela da Loja ---------- */
+.tela-loja { justify-content: flex-start; }
+.saldo-loja {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 4px 0 6px;
+  padding: 8px 18px;
+  font-family: var(--fonte-titulo);
+  font-size: 1.15rem;
+  background: rgba(255,253,246,0.96);
+  border: 3px solid var(--grafite);
+  border-radius: 999px;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+}
+.saldo-loja-chip {
+  display: inline-flex;
+  align-items: center;
+  background: var(--amarelo-sol);
+  border: 2px solid var(--grafite);
+  border-radius: 999px;
+  padding: 0 12px 0 4px;
+  font-size: 1.35rem;
+}
+.saldo-loja-chip .icone-cruzeiro { margin: 0 4px 0 0; }
+.dica-loja {
+  margin: 4px 0 14px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--grafite);
+  background: rgba(255,253,246,0.9);
+  padding: 4px 14px;
+  border-radius: 999px;
+}
+.abas-loja {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 10px;
+}
+.aba-loja {
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-height: 46px;
+  padding: 6px 4px;
+  border: 3px solid var(--grafite);
+  border-radius: var(--raio-medio);
+  background: var(--branco-giz);
+  color: var(--grafite);
+  cursor: pointer;
+}
+.aba-loja:hover { background: #E4EFE8; }
+.aba-loja.aba-ativa {
+  background: var(--verde-texto);
+  color: var(--branco-giz);
+  box-shadow: 0 3px 0 rgba(0,0,0,0.25);
+}
+.aba-loja:focus-visible { outline: 4px solid var(--azul-ceu); outline-offset: 2px; }
+@media (max-width: 480px) {
+  .abas-loja { grid-template-columns: repeat(2, 1fr); }
+}
+.status-loja {
+  min-height: 1.4em;
+  margin: 0 0 8px;
+  text-align: center;
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  color: var(--verde-texto);
+}
+.status-loja:empty { margin: 0; min-height: 0; }
+.status-loja:not(:empty) {
+  background: #E7F5EC;
+  border: 2px solid var(--verde-texto);
+  border-radius: var(--raio-medio);
+  padding: 6px 14px;
+}
+.grade-loja { width: 100%; }
+.loja-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 136px), 1fr));
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 14px;
+}
+.loja-titulo-grupo {
+  background: rgba(255,253,246,0.94);
+  padding: 4px 14px;
+  border-radius: 999px;
+}
+.loja-aviso-grupo {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+  text-align: center;
+  color: var(--grafite-suave);
+  background: rgba(255,253,246,0.9);
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+.item-loja {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 12px 8px 10px;
+  border: 3px solid var(--grafite);
+  border-radius: var(--raio-medio);
+  background: var(--branco-giz);
+  text-align: center;
+  min-height: 150px;
+}
+.item-loja-possui { background: #E7F5EC; border-color: var(--verde-texto); }
+.item-loja-nome {
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+.item-loja-falta {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--vermelho-texto);
+}
+.item-loja .cartao-bandeira { width: 60px; height: 44px; }
+.loja-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid var(--grafite);
+  background: #FFFFFF;
+  padding: 4px;
+  display: inline-flex;
+}
+.loja-avatar img { width: 100%; height: 100%; object-fit: contain; }
+.loja-avatar-grande { width: 96px; height: 96px; }
+.loja-etiqueta-nome {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--amarelo-sol);
+  border: 3px solid var(--grafite);
+  font-size: 1.4rem;
+}
+.botao-comprar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  white-space: nowrap;
+  min-height: 44px;
+  padding: 6px 8px;
+  font-family: var(--fonte-titulo);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--grafite);
+  background: linear-gradient(180deg, #FFD65C 0%, var(--amarelo-sol) 100%);
+  border: 3px solid var(--grafite);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.2);
+  transition: transform 0.08s ease;
+}
+.botao-comprar:hover:not(:disabled) { background: var(--amarelo-sol-escuro); }
+.botao-comprar:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.2); }
+.botao-comprar:focus-visible { outline: 4px solid var(--azul-ceu); outline-offset: 3px; }
+.botao-comprar .loja-preco { display: inline-flex; align-items: center; }
+.botao-comprar .icone-cruzeiro { height: 1.25em; margin: 0 2px 0 4px; }
+.botao-comprar.sem-saldo { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+.botao-comprar.comprado {
+  background: var(--verde-texto);
+  color: var(--branco-giz);
+  cursor: default;
+  box-shadow: none;
+}
+
+/* ---------- Modal de compra ---------- */
+.painel-compra {
+  background: var(--branco-giz);
+  border: 3px solid var(--grafite);
+  border-radius: var(--raio-grande);
+  padding: 22px;
+  max-width: 360px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.visual-compra { margin: 4px 0 8px; min-height: 60px; display: flex; align-items: center; justify-content: center; }
+.visual-compra .cartao-bandeira { width: 96px; height: 70px; }
+.visual-compra .escudo-clube { width: 72px; height: 84px; }
+.texto-compra { margin: 0 0 16px; font-size: 1.02rem; }
+.botao-cta-simples {
+  background: linear-gradient(180deg, #4FCF8A 0%, var(--verde-grama) 60%, var(--verde-grama-escuro) 100%);
+  color: #FFFFFF;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.35);
+}
+.botao-cta-simples:hover { background: linear-gradient(180deg, var(--verde-grama) 0%, var(--verde-texto) 100%); }
+.botao-cta-simples:disabled:hover { background: linear-gradient(180deg, #4FCF8A 0%, var(--verde-grama) 60%, var(--verde-grama-escuro) 100%); }
+.botao-cancelar { background: #FFFFFF; }
+.botao-cancelar:hover { background: #EEF1F3; }
+
+/* ---------- Resultado: ganho na carteira ---------- */
+.ganho-carteira {
+  margin: 0 0 10px;
+  padding: 6px 16px;
+  text-align: center;
+  font-family: var(--fonte-titulo);
+  font-weight: 600;
+  background: #FFF6DA;
+  border: 2px solid #C97A1A;
+  border-radius: 999px;
+}
+.ganho-carteira:empty { display: none; }
+
+/* ---------- Backup: confirmar restauracao (R10) ---------- */
+.confirmar-restauracao {
+  margin-top: 14px;
+  padding: 14px;
+  border: 3px solid var(--vermelho-texto);
+  border-radius: var(--raio-medio);
+  background: #FFF1F0;
+  text-align: center;
+}
+.confirmar-restauracao[hidden] { display: none; }
+.texto-confirmar-restauracao { margin: 0 0 12px; font-weight: 700; color: var(--vermelho-texto); }
+
+/* ---------- Tutorial ---------- */
+.tela-tutorial { justify-content: flex-start; }
+.cartao-tutorial {
+  width: 100%;
+  max-width: 520px;
+  margin-top: 6px;
+  padding: 16px 18px 14px;
+  background: var(--branco-giz);
+  border: 3px solid var(--grafite);
+  border-radius: var(--raio-grande);
+  box-shadow: 0 6px 0 rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.passo-contador {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--azul-texto);
+}
+.passo-titulo { font-size: 1.3rem; margin: 10px 0 6px; }
+.passo-texto { margin: 0 0 10px; font-size: 1.02rem; max-width: 44ch; }
+.pontos-tutorial { display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
+.ponto-tutorial {
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid var(--grafite);
+  background: var(--branco-giz);
+}
+.ponto-tutorial.feito { background: var(--verde-texto); }
+.ponto-tutorial.ativo { background: var(--amarelo-sol); transform: scale(1.3); }
+.controles-tutorial {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 520px;
+  margin-top: 16px;
+}
+.controles-tutorial .botao { flex: 1; max-width: none; }
+
+/* Ilustracoes */
+.ilustracao-tutorial {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--raio-medio);
+  overflow: hidden;
+  background: linear-gradient(180deg, #0B1E3D 0%, #1E5B96 100%);
+  border: 3px solid var(--grafite);
+}
+.tut-cena { position: absolute; inset: 0; }
+.tut-gol { position: absolute; left: 6%; right: 6%; bottom: 0; width: 88%; height: auto; }
+.tut-bola { font-size: 22px; line-height: 1; display: inline-block; }
+
+/* Passo 1 - conta */
+.tut-cena-conta { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #F4F8F5; }
+.tut-pergunta {
+  position: relative;
+  font-family: var(--fonte-titulo); font-weight: 700; font-size: 1.6rem;
+  background: #FFFFFF; border: 3px solid var(--grafite); border-radius: 14px; padding: 2px 22px;
+}
+.tut-timer {
+  position: absolute; right: -44px; top: 50%; transform: translateY(-50%);
+  font-size: 0.8rem; background: var(--verde-texto); color: #FFF; border-radius: 999px; padding: 2px 8px;
+}
+.tut-respostas { display: flex; gap: 6px; }
+.tut-respostas span {
+  width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--fonte-titulo); font-weight: 700; font-size: 1.1rem;
+  background: var(--amarelo-sol); border: 3px solid var(--grafite); border-radius: 10px;
+}
+.tut-respostas .tut-certa { animation: tut-certa 2.2s ease-in-out infinite; }
+.tut-dedo { position: absolute; left: 50%; bottom: 4%; font-size: 1.8rem; animation: tut-dedo 2.2s ease-in-out infinite; }
+@keyframes tut-certa {
+  0%, 45% { background: var(--amarelo-sol); }
+  55%, 100% { background: #4FCF8A; }
+}
+@keyframes tut-dedo {
+  0% { transform: translate(60px, 10px); }
+  45% { transform: translate(-2px, -18px); }
+  55% { transform: translate(-2px, -14px) scale(0.9); }
+  100% { transform: translate(-2px, -18px); }
+}
+
+/* Passo 2 - defesa */
+.tut-goleiro-pos { position: absolute; left: 45%; bottom: 8%; width: 12%; animation: tut-goleiro 1.8s ease-in-out infinite; transform-origin: 50% 100%; }
+.tut-goleiro { width: 100%; height: auto; display: block; }
+.tut-bola-defesa { position: absolute; left: 50%; bottom: -10%; animation: tut-bola-defesa 1.8s ease-in infinite; }
+@keyframes tut-goleiro {
+  0%, 30% { transform: translateX(0) rotate(0); }
+  55%, 100% { transform: translateX(-90%) rotate(-55deg); }
+}
+@keyframes tut-bola-defesa {
+  0% { transform: translate(0, 0); opacity: 1; }
+  55% { transform: translate(-70px, -70px); opacity: 1; }
+  75%, 100% { transform: translate(-40px, -30px); opacity: 0; }
+}
+.tut-selo {
+  position: absolute; top: 8%; left: 50%; transform: translateX(-50%);
+  font-family: var(--fonte-titulo); font-weight: 700; font-size: 1rem;
+  padding: 2px 12px; border-radius: 999px; border: 2px solid var(--grafite);
+}
+.tut-selo-erro { background: #FFE0DE; color: var(--vermelho-texto); }
+.tut-selo-gol { background: var(--amarelo-sol); color: var(--grafite); animation: tut-pop 1.8s ease-in-out infinite; }
+@keyframes tut-pop {
+  0%, 40% { transform: translateX(-50%) scale(0.6); opacity: 0; }
+  55%, 100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+/* Passo 3 - mira */
+.tut-mira {
+  position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px;
+  border: 4px solid #FFFFFF; border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--grafite);
+  animation: tut-mira 3.2s ease-in-out infinite;
+}
+@keyframes tut-mira {
+  0% { left: 50%; top: 55%; border-color: #FFFFFF; }
+  25% { left: 25%; top: 35%; border-color: #FFFFFF; }
+  45% { left: 4%; top: 30%; border-color: #E0343B; }
+  65% { left: 75%; top: 40%; border-color: #FFFFFF; }
+  85%, 100% { left: 72%; top: 38%; border-color: #4FCF8A; }
+}
+
+/* Passos 4 e 5 - barras */
+.tut-cena-barra { display: flex; flex-direction: column; justify-content: center; padding: 0 8%; gap: 8px; background: #F4F8F5; }
+.tut-trilho {
+  position: relative; height: 34px; border: 3px solid var(--grafite);
+  border-radius: 999px; background: #FFFFFF; overflow: hidden;
+}
+.tut-trilho-altura { background: linear-gradient(90deg, #E9F6FC 0 33.3%, #FFF6DA 33.3% 66.6%, #EDE6FB 66.6% 100%); }
+.tut-div { position: absolute; top: 0; bottom: 0; left: 33.3%; width: 2px; background: var(--grafite); }
+.tut-div-2 { left: 66.6%; }
+.tut-indicador {
+  position: absolute; top: 2px; bottom: 2px; width: 10px; margin-left: -5px;
+  background: var(--grafite); border-radius: 4px; animation: tut-vai-volta 2.4s ease-in-out infinite alternate;
+}
+@keyframes tut-vai-volta { from { left: 4%; } to { left: 96%; } }
+.tut-ideal {
+  position: absolute; top: 0; bottom: 0; left: 35%; width: 40%;
+  background: #BDEBCD; border-left: 2px dashed var(--verde-texto); border-right: 2px dashed var(--verde-texto);
+  font-size: 0.7rem; font-weight: 700; color: var(--verde-texto);
+  display: flex; align-items: flex-end; justify-content: center; z-index: 1;
+}
+.tut-enchimento {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 10%;
+  background: linear-gradient(90deg, var(--amarelo-sol), #F28C28); opacity: 0.85; z-index: 2;
+  animation: tut-encher 2.2s ease-in-out infinite alternate;
+}
+@keyframes tut-encher { from { width: 6%; } to { width: 96%; } }
+.tut-legenda { display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700; }
+
+/* Passo 6 - gol */
+.tut-bola-gol { position: absolute; left: 48%; bottom: -12%; animation: tut-bola-gol 1.8s ease-out infinite; }
+@keyframes tut-bola-gol {
+  0% { transform: translate(0, 0) scale(1.2); }
+  50%, 100% { transform: translate(70px, -60px) scale(0.8); }
+}
+.tut-loja { position: absolute; right: 4%; bottom: 6%; font-size: 1.8rem; animation: flutuar 2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ilustracao-tutorial * { animation: none !important; }
+  .tut-mira { left: 72%; top: 38%; border-color: #4FCF8A; }
+  .tut-indicador { left: 50%; }
+  .tut-enchimento { width: 55%; }
+  .tut-selo-gol { opacity: 1; transform: translateX(-50%); }
+  .tut-respostas .tut-certa { background: #4FCF8A; }
+}
+
+/* ---------- Alto contraste nas telas novas ---------- */
+body.alto-contraste .botao-saldo,
+body.alto-contraste .item-loja,
+body.alto-contraste .aba-loja,
+body.alto-contraste .saldo-loja,
+body.alto-contraste .cartao-tutorial,
+body.alto-contraste .painel-compra,
+body.alto-contraste .botao-link-loja,
+body.alto-contraste .ganho-carteira,
+body.alto-contraste .dica-loja,
+body.alto-contraste .loja-aviso-grupo {
+  background: var(--branco-giz) !important;
+  color: var(--grafite) !important;
+  border-color: var(--grafite) !important;
+  border-style: solid !important;
+}
+body.alto-contraste .aba-loja.aba-ativa,
+body.alto-contraste .botao-comprar.comprado {
+  background: var(--grafite) !important;
+  color: var(--branco-giz) !important;
+}
+body.alto-contraste .botao-comprar {
+  background: var(--amarelo-sol-escuro);
+  color: var(--branco-giz);
+  border-width: 4px;
+}
+body.alto-contraste .item-loja-falta { color: #7A0000; }
+body.alto-contraste .botao-menu-tutorial,
+body.alto-contraste .botao-menu-loja,
+body.alto-contraste .botao-cta-simples,
+body.alto-contraste .botao-cancelar {
+  background: var(--branco-giz) !important;
+  color: var(--grafite) !important;
+  text-shadow: none;
+}
+body.alto-contraste .botao-cta-simples {
+  background: var(--verde-grama) !important;
+  color: var(--branco-giz) !important;
+}
+
+/* v1.5 (legibilidade): titulos de secao ("Personagem", "Animal", "Avatar")
+   ficavam escuros sobre o fundo azul escuro. Ganham a mesma pilula clara
+   dos outros titulos. */
+.subtitulo-secao {
+  background: rgba(255,253,246,0.94);
+  padding: 4px 14px;
+  border-radius: 999px;
+  box-shadow: 0 3px 10px rgba(11,30,61,0.2);
+}
+
+/* Loja no desktop: 3 colunas largas (o botao "Comprar ⭐ 200" cabe inteiro). */
+@media (min-width: 600px) {
+  .tela-loja { max-width: 720px; }
+  .loja-lista { grid-template-columns: repeat(3, 1fr); }
 }

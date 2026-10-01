@@ -20,7 +20,7 @@
   var MAXIMO_RESULTADOS = 500;
 
   // Unicas chaves do localStorage que um backup local pode restaurar.
-  var CHAVES_LOCAIS_PERMITIDAS = ['mathgol_acessibilidade', 'mathgol_progressao', 'mathgol_ultimo_resultado'];
+  var CHAVES_LOCAIS_PERMITIDAS = ['mathgol_acessibilidade', 'mathgol_progressao', 'mathgol_ultimo_resultado', 'mathgol_carteira'];
   // Chaves de versoes antigas: aceitas no arquivo, mas IGNORADAS (o antigo
   // token nunca foi credencial e nao e mais usado para nada).
   var CHAVES_LEGADAS_IGNORADAS = ['mathgol_token'];
@@ -147,10 +147,35 @@
       (obj.versao === 1 || obj.versao === 2) && objetoSimples(obj.dados);
   }
 
+  // ---------- Carteira de Cruzeiros (v1.5, Loja) ----------
+  // { versao: 1, dados: { saldo, totalGanho, itens: ["selecao:portugal", ...] } }
+  // saldo nunca passa do total ja ganho; itens unicos e com formato conhecido.
+  var SALDO_MAXIMO = 999999;
+  var MAXIMO_ITENS = 200;
+  var ID_ITEM_LOJA = /^(selecao|clube|avatar|nome):[^<>:\u0000-\u001f]{1,32}$/;
+
+  function validarCarteira(obj) {
+    if (!objetoSimples(obj) || !somenteChaves(obj, ['versao', 'dados']) || obj.versao !== 1) return false;
+    var d = obj.dados;
+    if (!objetoSimples(d) || !somenteChaves(d, ['saldo', 'totalGanho', 'itens'])) return false;
+    if (!inteiroEntre(d.saldo, 0, SALDO_MAXIMO)) return false;
+    if (!inteiroEntre(d.totalGanho, 0, SALDO_MAXIMO * 10)) return false;
+    if (d.saldo > d.totalGanho) return false;
+    if (!Array.isArray(d.itens) || d.itens.length > MAXIMO_ITENS) return false;
+    var vistos = {};
+    for (var i = 0; i < d.itens.length; i++) {
+      var id = d.itens[i];
+      if (typeof id !== 'string' || !ID_ITEM_LOJA.test(id) || vistos[id]) return false;
+      vistos[id] = true;
+    }
+    return true;
+  }
+
   var VALIDADORES_LOCAIS = {
     mathgol_acessibilidade: validarAcessibilidade,
     mathgol_progressao: validarProgressao,
-    mathgol_ultimo_resultado: validarUltimoResultado
+    mathgol_ultimo_resultado: validarUltimoResultado,
+    mathgol_carteira: validarCarteira
   };
 
   // ---------- Backups ----------
@@ -246,7 +271,9 @@
     validarResultadoPartida: validarResultadoPartida,
     validarPerfil: validarPerfil,
     copiarResultado: copiarResultado,
-    validarProgressao: validarProgressao
+    validarProgressao: validarProgressao,
+    validarCarteira: validarCarteira,
+    SALDO_MAXIMO: SALDO_MAXIMO
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = ValidacaoBackup;

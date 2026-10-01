@@ -3,35 +3,76 @@
 // A crianca ESCOLHE um personagem + um animal pra montar o apelido (nao
 // digita nada). Listas podem vir do Firestore via carregarConfiguracoes().
 
+// ---------- Nomes do craque (apelido = personagem + animal) ----------
+// v1.5: listas REDUZIDAS. A criança começa com poucas opções grátis e
+// libera as outras na Loja, gastando Cruzeiros (ver JS/carteira.js).
+// Cada palavra tem no máximo 20 caracteres (mesma regra da validação).
 let PERSONAGENS = [
-  'Capitão', 'Fera', 'Relâmpago', 'Craque', 'Foguete',
-  'Furacão', 'Campeão', 'Guerreiro', 'Fenômeno', 'Trovão',
-  'Meteoro', 'Torpedo', 'Escudo', 'Cometa', 'Raio',
-  'Capitã', 'Estrela', 'Campeã', 'Guerreira', 'Fênix',
-  'Centelha', 'Valente', 'Coragem', 'Vitória', 'Aurora',
-  'Heroína', 'Lenda', 'Chama', 'Brilho', 'Medalha'
+  'Capitão', 'Capitã', 'Craque', 'Fera',
+  'Foguete', 'Estrela', 'Raio', 'Campeã'
+];
+// Vendidos na Loja (aba "Nomes").
+let PERSONAGENS_LOJA = [
+  'Relâmpago', 'Furacão', 'Fenômeno', 'Trovão',
+  'Cometa', 'Guerreira', 'Lenda', 'Fênix'
 ];
 
 let ANIMAIS = [
-  'Tigre', 'Águia', 'Onça', 'Leão', 'Gavião',
-  'Puma', 'Lobo', 'Falcão', 'Pantera', 'Tubarão',
-  'Golfinho', 'Coruja', 'Raposa', 'Jaguar', 'Fênix',
-  'Coelho', 'Lince', 'Arara', 'Borboleta', 'Flamingo'
+  'Tigre', 'Onça', 'Leão', 'Águia', 'Coruja', 'Golfinho'
+];
+let ANIMAIS_LOJA = [
+  'Tubarão', 'Pantera', 'Falcão', 'Lobo', 'Arara', 'Jaguar'
 ];
 
+// Preço (em Cruzeiros) de cada nome vendido na Loja.
+var PRECO_NOME_LOJA = 60;
+
+// ---------- Times ----------
+// categoria: 'selecao' (bandeira da flagcdn) ou 'clube' (escudo genérico
+// desenhado com as cores do time + sigla; NÃO usamos escudos oficiais).
+// preco: 0 = grátis desde o início; > 0 = comprado na Loja.
+// corPrimaria/corSecundaria pintam a camisa do batedor na cena 3D/2D.
 let SELECOES = [
-  { id: 'brasil',     nome: 'Brasil',     bandeira: 'br',     corPrimaria: '#2E9E5B', corSecundaria: '#FFC63B' },
-  { id: 'argentina',  nome: 'Argentina',  bandeira: 'ar',     corPrimaria: '#6EC1E4', corSecundaria: '#FFFDF6' },
-  { id: 'alemanha',   nome: 'Alemanha',   bandeira: 'de',     corPrimaria: '#21303B', corSecundaria: '#E0343B' },
-  { id: 'franca',     nome: 'França',     bandeira: 'fr',     corPrimaria: '#3A5FCD', corSecundaria: '#E0343B' },
-  { id: 'japao',      nome: 'Japão',      bandeira: 'jp',     corPrimaria: '#FFFDF6', corSecundaria: '#E0343B' },
-  { id: 'portugal',   nome: 'Portugal',   bandeira: 'pt',     corPrimaria: '#2E9E5B', corSecundaria: '#E0343B' },
-  { id: 'espanha',    nome: 'Espanha',    bandeira: 'es',     corPrimaria: '#E0343B', corSecundaria: '#FFC63B' },
-  { id: 'italia',     nome: 'Itália',     bandeira: 'it',     corPrimaria: '#3A5FCD', corSecundaria: '#FFFDF6' },
-  { id: 'inglaterra', nome: 'Inglaterra', bandeira: 'gb-eng', corPrimaria: '#FFFDF6', corSecundaria: '#E0343B' },
-  { id: 'colombia',   nome: 'Colômbia',   bandeira: 'co',     corPrimaria: '#FFC63B', corSecundaria: '#3A5FCD' },
-  { id: 'mexico',     nome: 'México',     bandeira: 'mx',     corPrimaria: '#2E9E5B', corSecundaria: '#FFFDF6' },
-  { id: 'coreia',     nome: 'Coreia',     bandeira: 'kr',     corPrimaria: '#E0343B', corSecundaria: '#3A5FCD' }
+  // Grátis (seleções iniciais reduzidas para 4)
+  { id: 'brasil',     categoria: 'selecao', preco: 0,   nome: 'Brasil',     bandeira: 'br',     corPrimaria: '#2E9E5B', corSecundaria: '#FFC63B' },
+  { id: 'argentina',  categoria: 'selecao', preco: 0,   nome: 'Argentina',  bandeira: 'ar',     corPrimaria: '#6EC1E4', corSecundaria: '#FFFDF6' },
+  { id: 'franca',     categoria: 'selecao', preco: 0,   nome: 'França',     bandeira: 'fr',     corPrimaria: '#3A5FCD', corSecundaria: '#E0343B' },
+  { id: 'alemanha',   categoria: 'selecao', preco: 0,   nome: 'Alemanha',   bandeira: 'de',     corPrimaria: '#21303B', corSecundaria: '#E0343B' },
+  // Seleções da Loja
+  { id: 'portugal',   categoria: 'selecao', preco: 150, nome: 'Portugal',   bandeira: 'pt',     corPrimaria: '#C8102E', corSecundaria: '#2E9E5B' },
+  { id: 'espanha',    categoria: 'selecao', preco: 150, nome: 'Espanha',    bandeira: 'es',     corPrimaria: '#E0343B', corSecundaria: '#FFC63B' },
+  { id: 'italia',     categoria: 'selecao', preco: 150, nome: 'Itália',     bandeira: 'it',     corPrimaria: '#3A5FCD', corSecundaria: '#FFFDF6' },
+  { id: 'inglaterra', categoria: 'selecao', preco: 150, nome: 'Inglaterra', bandeira: 'gb-eng', corPrimaria: '#FFFDF6', corSecundaria: '#E0343B' },
+  { id: 'holanda',    categoria: 'selecao', preco: 150, nome: 'Holanda',    bandeira: 'nl',     corPrimaria: '#F36C21', corSecundaria: '#21303B' },
+  { id: 'uruguai',    categoria: 'selecao', preco: 120, nome: 'Uruguai',    bandeira: 'uy',     corPrimaria: '#5CBFEB', corSecundaria: '#21303B' },
+  { id: 'japao',      categoria: 'selecao', preco: 120, nome: 'Japão',      bandeira: 'jp',     corPrimaria: '#1B3C8C', corSecundaria: '#FFFDF6' },
+  { id: 'marrocos',   categoria: 'selecao', preco: 120, nome: 'Marrocos',   bandeira: 'ma',     corPrimaria: '#C1272D', corSecundaria: '#006233' },
+  { id: 'colombia',   categoria: 'selecao', preco: 120, nome: 'Colômbia',   bandeira: 'co',     corPrimaria: '#FFC63B', corSecundaria: '#3A5FCD' },
+  { id: 'mexico',     categoria: 'selecao', preco: 120, nome: 'México',     bandeira: 'mx',     corPrimaria: '#2E9E5B', corSecundaria: '#FFFDF6' },
+  { id: 'estados-unidos', categoria: 'selecao', preco: 120, nome: 'Estados Unidos', bandeira: 'us', corPrimaria: '#FFFDF6', corSecundaria: '#1B3C8C' },
+  { id: 'coreia',     categoria: 'selecao', preco: 120, nome: 'Coreia',     bandeira: 'kr',     corPrimaria: '#E0343B', corSecundaria: '#3A5FCD' },
+
+  // Brasileirão Série A 2026 (os 20 clubes da temporada). Todos na Loja.
+  { id: 'athletico-pr',  categoria: 'clube', preco: 200, nome: 'Athletico-PR',  sigla: 'CAP', corPrimaria: '#C8102E', corSecundaria: '#111111' },
+  { id: 'atletico-mg',   categoria: 'clube', preco: 200, nome: 'Atlético-MG',   sigla: 'CAM', corPrimaria: '#111111', corSecundaria: '#FFFFFF' },
+  { id: 'bahia',         categoria: 'clube', preco: 200, nome: 'Bahia',         sigla: 'BAH', corPrimaria: '#0047AB', corSecundaria: '#E30613' },
+  { id: 'botafogo',      categoria: 'clube', preco: 200, nome: 'Botafogo',      sigla: 'BOT', corPrimaria: '#111111', corSecundaria: '#FFFFFF' },
+  { id: 'bragantino',    categoria: 'clube', preco: 200, nome: 'Bragantino',    sigla: 'RBB', corPrimaria: '#FFFFFF', corSecundaria: '#D2003C' },
+  { id: 'chapecoense',   categoria: 'clube', preco: 200, nome: 'Chapecoense',   sigla: 'CHA', corPrimaria: '#00843D', corSecundaria: '#FFFFFF' },
+  { id: 'corinthians',   categoria: 'clube', preco: 200, nome: 'Corinthians',   sigla: 'COR', corPrimaria: '#FFFFFF', corSecundaria: '#111111' },
+  { id: 'coritiba',      categoria: 'clube', preco: 200, nome: 'Coritiba',      sigla: 'CFC', corPrimaria: '#00543C', corSecundaria: '#FFFFFF' },
+  { id: 'cruzeiro',      categoria: 'clube', preco: 200, nome: 'Cruzeiro',      sigla: 'CRU', corPrimaria: '#0033A0', corSecundaria: '#FFFFFF' },
+  { id: 'flamengo',      categoria: 'clube', preco: 200, nome: 'Flamengo',      sigla: 'FLA', corPrimaria: '#C8102E', corSecundaria: '#111111' },
+  { id: 'fluminense',    categoria: 'clube', preco: 200, nome: 'Fluminense',    sigla: 'FLU', corPrimaria: '#7A1E3A', corSecundaria: '#00613C' },
+  { id: 'gremio',        categoria: 'clube', preco: 200, nome: 'Grêmio',        sigla: 'GRE', corPrimaria: '#0D80BF', corSecundaria: '#111111' },
+  { id: 'internacional', categoria: 'clube', preco: 200, nome: 'Internacional', sigla: 'INT', corPrimaria: '#E30613', corSecundaria: '#FFFFFF' },
+  { id: 'mirassol',      categoria: 'clube', preco: 200, nome: 'Mirassol',      sigla: 'MIR', corPrimaria: '#FFD200', corSecundaria: '#00843D' },
+  { id: 'palmeiras',     categoria: 'clube', preco: 200, nome: 'Palmeiras',     sigla: 'PAL', corPrimaria: '#006437', corSecundaria: '#FFFFFF' },
+  { id: 'remo',          categoria: 'clube', preco: 200, nome: 'Remo',          sigla: 'REM', corPrimaria: '#0A1F5C', corSecundaria: '#FFFFFF' },
+  { id: 'santos',        categoria: 'clube', preco: 200, nome: 'Santos',        sigla: 'SAN', corPrimaria: '#FFFFFF', corSecundaria: '#111111' },
+  { id: 'sao-paulo',     categoria: 'clube', preco: 200, nome: 'São Paulo',     sigla: 'SAO', corPrimaria: '#FFFFFF', corSecundaria: '#E30613' },
+  { id: 'vasco',         categoria: 'clube', preco: 200, nome: 'Vasco',         sigla: 'VAS', corPrimaria: '#111111', corSecundaria: '#FFFFFF' },
+  { id: 'vitoria',       categoria: 'clube', preco: 200, nome: 'Vitória',       sigla: 'VIT', corPrimaria: '#E30613', corSecundaria: '#111111' }
 ];
 
 let DIFICULDADES = [
@@ -113,17 +154,50 @@ function validarLista(lista, validador) {
 
 function aplicarConfiguracoesRemotas(config) {
   if (!config || typeof config !== 'object') return;
-  // So aceita a lista remota se ela for valida E tiver pelo menos tantos
-  // itens quanto a lista local (um Firestore desatualizado nao apaga
-  // opcoes que ja existem no codigo).
-  var personagens = validarLista(config.personagens, validarPalavra);
-  var animais = validarLista(config.animais, validarPalavra);
+  // v1.5 (Loja): o CATÁLOGO (quais times/nomes existem, preço e categoria)
+  // mora no código — senão um Firestore desatualizado traria de volta as
+  // listas antigas e grandes, ou sumiria com itens que a criança comprou.
+  // Do Firestore aceitamos só AJUSTES nos times que já existem aqui (nome,
+  // bandeira e cores) e as dificuldades. Personagens/animais remotos são
+  // ignorados (a lista grátis reduzida + a Loja são a fonte da verdade).
   var selecoes = validarLista(config.selecoes, validarSelecao);
   var dificuldades = validarLista(config.dificuldades, validarDificuldade);
-  if (personagens && personagens.length >= PERSONAGENS.length) PERSONAGENS = personagens;
-  if (animais && animais.length >= ANIMAIS.length) ANIMAIS = animais;
-  if (selecoes && selecoes.length >= SELECOES.length) SELECOES = selecoes;
+  if (selecoes) {
+    selecoes.forEach(function(remota) {
+      var local = SELECOES.find(function(s) { return s.id === remota.id; });
+      if (!local) return;
+      local.nome = remota.nome;
+      if (remota.bandeira && local.categoria === 'selecao') local.bandeira = remota.bandeira;
+      if (remota.corPrimaria) local.corPrimaria = remota.corPrimaria;
+      if (remota.corSecundaria) local.corSecundaria = remota.corSecundaria;
+    });
+  }
   if (dificuldades && dificuldades.length >= DIFICULDADES.length) DIFICULDADES = dificuldades;
+}
+
+// ---------- Catálogo da Loja ----------
+// Ids dos itens: "<tipo>:<chave>" — selecao:portugal, clube:flamengo,
+// avatar:Panda, nome:Furacão. Itens grátis (preco 0) nunca são "comprados":
+// já pertencem a todo mundo.
+function idItemTime(time) {
+  return (time.categoria === 'clube' ? 'clube:' : 'selecao:') + time.id;
+}
+
+function catalogoLoja() {
+  var itens = [];
+  SELECOES.forEach(function(t) {
+    if (t.preco > 0) itens.push({ id: idItemTime(t), tipo: t.categoria === 'clube' ? 'clube' : 'selecao', nome: t.nome, preco: t.preco, time: t });
+  });
+  (typeof AVATARES_LOJA !== 'undefined' ? AVATARES_LOJA : []).forEach(function(a) {
+    itens.push({ id: 'avatar:' + a.seed, tipo: 'avatar', nome: a.nome, preco: a.preco, seed: a.seed });
+  });
+  PERSONAGENS_LOJA.forEach(function(n) {
+    itens.push({ id: 'nome:' + n, tipo: 'nome', subtipo: 'personagem', nome: n, preco: PRECO_NOME_LOJA });
+  });
+  ANIMAIS_LOJA.forEach(function(n) {
+    itens.push({ id: 'nome:' + n, tipo: 'nome', subtipo: 'animal', nome: n, preco: PRECO_NOME_LOJA });
+  });
+  return itens;
 }
 
 const MENSAGENS_RESULTADO = {

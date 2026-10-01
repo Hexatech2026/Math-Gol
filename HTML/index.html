@@ -131,6 +131,10 @@
       </button>
     </div>
     <div class="topo-direita">
+      <button id="botao-saldo" class="botao-saldo" type="button" aria-label="Seus Cruzeiros: 0. Abrir a Loja">
+        <img class="icone-cruzeiro" src="../Imagens/estrela-cruzeiro.png" alt="">
+        <span id="saldo-topo" class="saldo-topo-valor">0</span>
+      </button>
       <button id="botao-tela-cheia" class="botao-icone" type="button" aria-label="Entrar em tela cheia" aria-pressed="false">⛶</button>
       <button id="botao-acessibilidade" class="botao-icone" type="button" aria-label="Abrir opções de acessibilidade">♿</button>
     </div>
@@ -149,6 +153,10 @@
     <p class="subtitulo subtitulo-curto">Chuta, acerta e faz o gol! ⚽</p>
     <div class="pilha-botoes">
       <button id="botao-jogar" class="botao botao-cta" type="button">Jogar</button>
+      <div class="linha-botoes-menu">
+        <button id="botao-tutorial" class="botao botao-menu-tutorial" type="button">❓ Como jogar</button>
+        <button id="botao-loja" class="botao botao-menu-loja" type="button">🛒 Loja</button>
+      </div>
       <button id="botao-creditos" class="botao botao-secundario" type="button">Créditos</button>
       <button id="botao-backup" class="botao botao-secundario" type="button">💾 Backup</button>
     </div>
@@ -172,8 +180,9 @@
     <div id="lista-animais" class="lista-chips"></div>
 
     <h3 class="subtitulo-secao">Avatar</h3>
-    <div id="abas-avatar" class="abas-avatar"></div>
     <div id="grade-avatares" class="grade-avatares"></div>
+
+    <button id="botao-loja-apelido" class="botao-link-loja" type="button">🛒 Mais nomes e avatares na Loja</button>
 
     <div class="pilha-botoes" style="margin-top: 20px;">
       <button id="botao-confirmar-apelido" class="botao" type="button" disabled>Confirmar</button>
@@ -182,8 +191,12 @@
 
   <section id="tela-selecao" class="tela">
     <h2>Escolha seu time</h2>
+    <h3 class="subtitulo-secao">🌎 Seleções</h3>
     <div id="grade-selecoes" class="grade-cartoes"></div>
-    <div class="pilha-botoes" style="margin-top: 24px;">
+    <h3 id="titulo-clubes" class="subtitulo-secao subtitulo-clubes" hidden>🇧🇷 Brasileirão Série A</h3>
+    <div id="grade-clubes" class="grade-cartoes" hidden></div>
+    <button id="botao-loja-selecao" class="botao-link-loja" type="button">🛒 Comprar mais seleções e times do Brasileirão</button>
+    <div class="pilha-botoes" style="margin-top: 20px;">
       <button id="botao-confirmar-selecao" class="botao" type="button" disabled>Confirmar ✅</button>
     </div>
   </section>
@@ -209,7 +222,7 @@
       <span id="titulo-fase" class="titulo-fase" data-titulo-tela>⚽ Pênaltis</span>
       <div id="cabecalho-fase" class="cabecalho-fase" role="img" aria-label="Cobranças"></div>
       <span id="timer-display" class="timer-display timer-verde">15s</span>
-      <span id="pontuacao-display" class="pontuacao-display">0 <img class="icone-cruzeiro" src="../Imagens/estrela-cruzeiro.png" alt="estrelinhas Cruzeiro"></span>
+      <span id="pontuacao-display" class="pontuacao-display">0 <img class="icone-cruzeiro" src="../Imagens/estrela-cruzeiro.png" alt="Cruzeiros"></span>
     </div>
 
     <!-- Layout adaptativo: em retrato, pergunta → campo → controles; em
@@ -268,14 +281,53 @@
   <section id="tela-resultado" class="tela">
     <h2 id="titulo-resultado">Fim da fase Pênaltis!</h2>
     <p id="placar-final" class="placar-grande">0 / 3</p>
-    <p id="pontuacao-final" class="pontuacao-resultado">0 <img class="icone-cruzeiro" src="../Imagens/estrela-cruzeiro.png" alt="">Cruzeiro</p>
+    <p id="pontuacao-final" class="pontuacao-resultado">0 <img class="icone-cruzeiro" src="../Imagens/estrela-cruzeiro.png" alt="">Cruzeiros</p>
+    <p id="ganho-carteira" class="ganho-carteira" aria-live="polite"></p>
     <p id="resumo-resultado" class="resumo-resultado" aria-live="polite" aria-atomic="true">--</p>
     <ul id="lista-cobrancas" class="lista-cobrancas" aria-label="Resumo de cada cobrança"></ul>
     <p id="mensagem-desbloqueio" class="mensagem-desbloqueio" aria-live="polite" aria-atomic="true"></p>
     <div class="pilha-botoes">
       <button id="botao-proxima-fase" class="botao botao-cta" type="button">Escolher fase 🏟️</button>
+      <button id="botao-loja-resultado" class="botao botao-menu-loja" type="button">🛒 Gastar na Loja</button>
       <button id="botao-voltar-menu" class="botao" type="button">Voltar ao menu</button>
     </div>
+  </section>
+
+  <section id="tela-loja" class="tela tela-loja">
+    <h2 data-titulo-tela>🛒 Loja do Craque</h2>
+    <p class="saldo-loja">
+      Você tem
+      <span class="saldo-loja-chip"><img class="icone-cruzeiro" src="../Imagens/estrela-cruzeiro.png" alt=""><strong id="saldo-loja-valor">0</strong></span>
+      <span id="saldo-loja-moeda">Cruzeiros</span>
+    </p>
+    <p class="dica-loja">Faça gols para ganhar Cruzeiros: quanto mais rápido responder, mais você ganha!</p>
+    <div id="abas-loja" class="abas-loja" role="group" aria-label="Categorias da Loja">
+      <button type="button" class="aba-loja aba-ativa" data-aba="selecao" aria-pressed="true">🌎 Seleções</button>
+      <button type="button" class="aba-loja" data-aba="clube" aria-pressed="false">🇧🇷 Brasileirão</button>
+      <button type="button" class="aba-loja" data-aba="avatar" aria-pressed="false">🙂 Avatares</button>
+      <button type="button" class="aba-loja" data-aba="nome" aria-pressed="false">🏷️ Nomes</button>
+    </div>
+    <p id="status-loja" class="status-loja" role="status" aria-live="polite"></p>
+    <div id="grade-loja" class="grade-loja"></div>
+    <div class="pilha-botoes" style="margin-top: 20px;">
+      <button id="botao-sair-loja" class="botao" type="button">Voltar</button>
+    </div>
+  </section>
+
+  <section id="tela-tutorial" class="tela tela-tutorial">
+    <h2 data-titulo-tela>❓ Como jogar</h2>
+    <div class="cartao-tutorial">
+      <p id="passo-tutorial-contador" class="passo-contador">Passo 1 de 6</p>
+      <div id="ilustracao-tutorial" class="ilustracao-tutorial" aria-hidden="true"></div>
+      <h3 id="passo-tutorial-titulo" class="passo-titulo">--</h3>
+      <p id="passo-tutorial-texto" class="passo-texto" aria-live="polite">--</p>
+      <div id="pontos-tutorial" class="pontos-tutorial" aria-hidden="true"></div>
+    </div>
+    <div class="controles-tutorial">
+      <button id="botao-tutorial-anterior" class="botao botao-tutorial-nav" type="button">← Voltar</button>
+      <button id="botao-tutorial-proximo" class="botao botao-cta-simples botao-tutorial-nav" type="button">Próximo →</button>
+    </div>
+    <button id="botao-tutorial-pular" class="botao-link-loja" type="button">Pular tutorial</button>
   </section>
 
 </div>
@@ -435,9 +487,29 @@
       <button id="botao-restaurar-backup" class="botao" type="button">📤 Restaurar Backup</button>
     </div>
     <input type="file" id="input-restaurar" accept=".json,application/json" hidden>
+    <div id="confirmar-restauracao" class="confirmar-restauracao" hidden>
+      <p id="texto-confirmar-restauracao" class="texto-confirmar-restauracao">Restaurar este backup vai substituir o progresso salvo neste navegador. Quer continuar?</p>
+      <div class="pilha-botoes">
+        <button id="botao-confirmar-restauracao" class="botao botao-cta-simples" type="button">Sim, restaurar</button>
+        <button id="botao-cancelar-restauracao" class="botao botao-cancelar" type="button">Cancelar</button>
+      </div>
+    </div>
     <p id="backup-status" class="backup-status" aria-live="polite"></p>
     <div class="pilha-botoes" style="margin-top: 14px;">
       <button id="botao-fechar-backup" class="botao" type="button">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmação de compra (Loja) -->
+<div id="sobreposicao-compra" class="sobreposicao" aria-hidden="true">
+  <div class="painel-compra" role="dialog" aria-modal="true" aria-labelledby="titulo-compra" aria-describedby="texto-compra">
+    <h2 id="titulo-compra" style="text-align:center; margin-bottom:10px;">Comprar?</h2>
+    <div id="visual-compra" class="visual-compra" aria-hidden="true"></div>
+    <p id="texto-compra" class="texto-compra">--</p>
+    <div class="pilha-botoes">
+      <button id="botao-confirmar-compra" class="botao botao-cta-simples" type="button">Sim, comprar!</button>
+      <button id="botao-cancelar-compra" class="botao botao-cancelar" type="button">Agora não</button>
     </div>
   </div>
 </div>
@@ -452,6 +524,7 @@
 <script src="../JS/backup-validacao.js"></script>
 <script src="../JS/data.js"></script>
 <script src="../JS/avatar-data.js"></script>
+<script src="../JS/carteira.js"></script>
 <script src="../JS/questions.js"></script>
 <script src="../JS/banco-questoes.js"></script>
 <script src="../JS/narration.js"></script>
@@ -460,6 +533,8 @@
 <script src="../JS/game-2d.js"></script>
 <script src="../JS/progressao.js"></script>
 <script src="../JS/main.js"></script>
+<script src="../JS/loja.js"></script>
+<script src="../JS/tutorial.js"></script>
 <script src="../JS/carregar-externos.js"></script>
 
 <!-- Alterna a foto da equipe no modal de créditos (sem depender do main.js) -->

@@ -69,11 +69,12 @@ var TOTAL_COBRANCAS = 3;
 var TIMER_MAX = 15;
 
 // Pausa entre a resposta correta e o inicio da mira.
-var PAUSA_ANTES_DA_MIRA = 500;
+// v1.5: animacoes mais rapidas (antes 500 ms).
+var PAUSA_ANTES_DA_MIRA = 300;
 // Tempo que o resultado fica na tela antes da proxima pergunta. Tem que ser
 // maior que TEMPO.ANTES_DE_RESETAR (game.js) pra bola ja estar na marca.
-var PAUSA_ENTRE_COBRANCAS = 2200;
-var categoriaAvatarAtiva = CATEGORIAS_AVATAR[0].id;
+// v1.5: 2200 → 1500 ms (ANTES_DE_RESETAR agora e 1200 ms).
+var PAUSA_ENTRE_COBRANCAS = 1500;
 
 // Passo da mira pelo teclado (metros no plano do gol).
 var PASSO_MIRA_TECLADO = { x: 0.3, y: 0.2 };
@@ -268,6 +269,7 @@ function mostrarTela(idTela, opcoes) {
   if (botaoOuvir) botaoOuvir.hidden = (idTela !== 'tela-fase1');
   // Durante a partida o fundo animado (e o "GOL!" decorativo) some.
   document.body.classList.toggle('em-partida', idTela === 'tela-fase1');
+  atualizarSaldoTopo();
 
   // Leva o foco (e o leitor de tela) para o titulo da nova tela.
   if (!opcoes || opcoes.focar !== false) {
@@ -301,9 +303,28 @@ function encerrarJogoEmAndamento() {
   if (tela) tela.classList.remove('foco-campo');
 }
 
+// Telas que podem ser abertas de varios lugares (Loja e Tutorial) guardam
+// de onde vieram; o "voltar" leva de volta pra la (e redesenha a tela,
+// pra ja mostrar o que foi comprado).
+var origemTela = { 'tela-loja': 'tela-menu', 'tela-tutorial': 'tela-menu' };
+
+function reabrirTela(idTela) {
+  if (idTela === 'tela-apelido') { irParaApelido(); return; }
+  if (idTela === 'tela-selecao') { irParaSelecao(); return; }
+  if (idTela === 'tela-fases') { irParaFases(); return; }
+  if (idTela === 'tela-resultado') { atualizarGanhoCarteira(); }
+  mostrarTela(idTela);
+}
+
 function voltarTelaAnterior() {
   var telaAtual = document.querySelector('.tela.tela-ativa');
   if (!telaAtual) return;
+  if (origemTela[telaAtual.id]) {
+    SFX.clique();
+    if (telaAtual.id === 'tela-tutorial' && typeof Tutorial !== 'undefined') Tutorial.marcarVisto();
+    reabrirTela(origemTela[telaAtual.id]);
+    return;
+  }
   var anteriorId = TELA_ANTERIOR[telaAtual.id];
   if (!anteriorId) return;
   SFX.clique();
@@ -328,8 +349,43 @@ function initNavegacaoTopo() {
 function initMenu() {
   document.getElementById('botao-jogar').addEventListener('click', function() {
     SFX.clique();
+    // Primeira vez: mostra o tutorial antes de montar o craque.
+    if (typeof Tutorial !== 'undefined' && !Tutorial.jaVisto()) {
+      Tutorial.abrir('tela-menu', { aoTerminar: irParaApelido });
+      return;
+    }
     irParaApelido();
   });
+  var botaoTutorial = document.getElementById('botao-tutorial');
+  if (botaoTutorial) botaoTutorial.addEventListener('click', function() {
+    SFX.clique();
+    if (typeof Tutorial !== 'undefined') Tutorial.abrir('tela-menu');
+  });
+}
+
+// ---------- Saldo de Cruzeiros (topo) ----------
+
+function atualizarSaldoTopo() {
+  var valor = document.getElementById('saldo-topo');
+  var botao = document.getElementById('botao-saldo');
+  if (!valor || !botao || typeof Carteira === 'undefined') return;
+  var saldo = Carteira.saldo();
+  valor.textContent = String(saldo);
+  botao.setAttribute('aria-label', 'Seus ' + Carteira.formatar(saldo) + '. Abrir a Loja');
+  // Na propria Loja o saldo ja aparece grande; na partida, ha o placar.
+  var ativa = telaAtivaId();
+  botao.hidden = ativa === 'tela-loja' || ativa === 'tela-fase1';
+}
+
+function initSaldoTopo() {
+  var botao = document.getElementById('botao-saldo');
+  if (botao) botao.addEventListener('click', function() {
+    SFX.clique();
+    var atual = telaAtivaId();
+    if (typeof Loja !== 'undefined' && atual && atual !== 'tela-fase1') Loja.abrir(atual);
+  });
+  if (typeof Carteira !== 'undefined') Carteira.aoMudar(atualizarSaldoTopo);
+  atualizarSaldoTopo();
 }
 
 // ---------- Tela cheia (Fullscreen API) ----------
@@ -399,16 +455,36 @@ function initTelaCheia() {
 // ---------- Apelido: crianca ESCOLHE personagem + animal ----------
 
 function irParaApelido() {
+  // Se um item escolhido deixou de existir (ex.: backup restaurado), limpa.
+  if (estado.personagemEscolhido && personagensDisponiveis().indexOf(estado.personagemEscolhido) === -1) estado.personagemEscolhido = null;
+  if (estado.animalEscolhido && animaisDisponiveis().indexOf(estado.animalEscolhido) === -1) estado.animalEscolhido = null;
+  if (avataresDisponiveis().map(function(a) { return a.seed; }).indexOf(estado.avatarSeed) === -1) estado.avatarSeed = AVATAR_PADRAO.seed;
   renderizarListaPersonagens();
   renderizarListaAnimais();
-  renderizarAbasAvatar();
   renderizarGradeAvatares();
   atualizarPreviewApelido();
   atualizarPreviewAvatar();
   mostrarTela('tela-apelido');
 }
 
-function renderizarListaChips(idContainer, itens, campoEstado) {
+// Grátis + comprados na Loja (na ordem: grátis primeiro).
+function itemComprado(idItem) {
+  return typeof Carteira !== 'undefined' && Carteira.possui(idItem);
+}
+function personagensDisponiveis() {
+  return PERSONAGENS.concat(PERSONAGENS_LOJA.filter(function(n) { return itemComprado('nome:' + n); }));
+}
+function animaisDisponiveis() {
+  return ANIMAIS.concat(ANIMAIS_LOJA.filter(function(n) { return itemComprado('nome:' + n); }));
+}
+function avataresDisponiveis() {
+  return AVATARES_GRATIS.concat(AVATARES_LOJA.filter(function(a) { return itemComprado('avatar:' + a.seed); }));
+}
+function timeDisponivel(time) {
+  return !(time.preco > 0) || itemComprado(idItemTime(time));
+}
+
+function renderizarListaChips(idContainer, itens, campoEstado, comprados) {
   var container = document.getElementById(idContainer);
   container.textContent = '';
   itens.forEach(function(texto) {
@@ -416,6 +492,7 @@ function renderizarListaChips(idContainer, itens, campoEstado) {
     btn.type = 'button';
     btn.className = 'chip-escolha';
     btn.textContent = texto;
+    if (comprados && comprados.indexOf(texto) !== -1) btn.classList.add('chip-comprado');
     var ativo = estado[campoEstado] === texto;
     btn.classList.toggle('chip-ativo', ativo);
     btn.setAttribute('aria-pressed', ativo ? 'true' : 'false');
@@ -429,8 +506,8 @@ function renderizarListaChips(idContainer, itens, campoEstado) {
   });
 }
 
-function renderizarListaPersonagens() { renderizarListaChips('lista-personagens', PERSONAGENS, 'personagemEscolhido'); }
-function renderizarListaAnimais() { renderizarListaChips('lista-animais', ANIMAIS, 'animalEscolhido'); }
+function renderizarListaPersonagens() { renderizarListaChips('lista-personagens', personagensDisponiveis(), 'personagemEscolhido', PERSONAGENS_LOJA); }
+function renderizarListaAnimais() { renderizarListaChips('lista-animais', animaisDisponiveis(), 'animalEscolhido', ANIMAIS_LOJA); }
 
 function atualizarPreviewApelido() {
   var texto = '';
@@ -441,7 +518,7 @@ function atualizarPreviewApelido() {
   } else if (estado.animalEscolhido) {
     texto = '??? ' + estado.animalEscolhido;
   } else {
-    texto = 'Escolha acima';
+    texto = 'Escolha abaixo';
   }
   estado.apelido = (estado.personagemEscolhido && estado.animalEscolhido)
     ? estado.personagemEscolhido + ' ' + estado.animalEscolhido : '';
@@ -460,42 +537,22 @@ function atualizarPreviewAvatar() {
   img.src = url;
 }
 
-function renderizarAbasAvatar() {
-  var container = document.getElementById('abas-avatar');
-  container.textContent = '';
-  CATEGORIAS_AVATAR.forEach(function(cat) {
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'aba-avatar';
-    var ativo = cat.id === categoriaAvatarAtiva;
-    btn.classList.toggle('aba-ativa', ativo);
-    btn.setAttribute('aria-pressed', ativo ? 'true' : 'false');
-    btn.textContent = cat.nome;
-    btn.addEventListener('click', function() {
-      SFX.clique();
-      categoriaAvatarAtiva = cat.id;
-      marcarSelecionado(container, '.aba-avatar', 'aba-ativa', btn);
-      renderizarGradeAvatares();
-    });
-    container.appendChild(btn);
-  });
-}
-
+// v1.5: uma grade so (sem abas), com os avatares gratis + os comprados.
 function renderizarGradeAvatares() {
   var container = document.getElementById('grade-avatares');
   container.textContent = '';
-  var cat = CATEGORIAS_AVATAR.find(function(c) { return c.id === categoriaAvatarAtiva; });
-  if (!cat) return;
-  cat.seeds.forEach(function(seed) {
+  avataresDisponiveis().forEach(function(avatar) {
+    var seed = avatar.seed;
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'item-avatar';
     var ativo = estado.avatarSeed === seed;
     btn.classList.toggle('avatar-selecionado', ativo);
     btn.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+    btn.setAttribute('aria-label', 'Avatar ' + avatar.nome);
     var img = document.createElement('img');
     img.src = gerarUrlAvatar(seed);
-    img.alt = seed;
+    img.alt = '';
     img.loading = 'lazy';
     img.onerror = function() { this.onerror = null; this.src = gerarAvatarFallbackLocal(seed); };
     btn.appendChild(img);
@@ -504,6 +561,8 @@ function renderizarGradeAvatares() {
       estado.avatarSeed = seed;
       marcarSelecionado(container, '.item-avatar', 'avatar-selecionado', btn);
       atualizarPreviewAvatar();
+      var preview = document.getElementById('avatar-apelido');
+      if (preview) { preview.classList.remove('pulo'); void preview.offsetWidth; preview.classList.add('pulo'); }
     });
     container.appendChild(btn);
   });
@@ -523,6 +582,11 @@ function initApelido() {
     }
     irParaSelecao();
   });
+  var botaoLoja = document.getElementById('botao-loja-apelido');
+  if (botaoLoja) botaoLoja.addEventListener('click', function() {
+    SFX.clique();
+    if (typeof Loja !== 'undefined') Loja.abrir('tela-apelido', 'nome');
+  });
 }
 
 // ---------- Selecao ----------
@@ -533,28 +597,77 @@ var BANDEIRAS_POR_ID = {
   colombia:'co', mexico:'mx', coreia:'kr'
 };
 
+// Escudo generico do clube: duas cores do time + sigla. NAO e o escudo
+// oficial (marca registrada); so ajuda a crianca a reconhecer o time.
+function criarEscudoClube(time, classeExtra) {
+  var escudo = document.createElement('span');
+  escudo.className = 'escudo-clube' + (classeExtra ? ' ' + classeExtra : '');
+  escudo.setAttribute('aria-hidden', 'true');
+  var c1 = COR_VALIDA.test(time.corPrimaria || '') ? time.corPrimaria : '#21303B';
+  var c2 = COR_VALIDA.test(time.corSecundaria || '') ? time.corSecundaria : '#FFFDF6';
+  escudo.style.setProperty('--cor-1', c1);
+  escudo.style.setProperty('--cor-2', c2);
+  var sigla = document.createElement('span');
+  sigla.className = 'escudo-sigla';
+  sigla.textContent = (time.sigla || time.nome.slice(0, 3)).toUpperCase();
+  // Texto claro ou escuro conforme a cor de fundo da faixa da sigla.
+  sigla.style.color = corEhClara(c1) ? '#111111' : '#FFFFFF';
+  escudo.appendChild(sigla);
+  return escudo;
+}
+
+function corEhClara(hex) {
+  var n = parseInt(hex.slice(1), 16);
+  var r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 160;
+}
+
+function criarBandeira(codigo, classe) {
+  var img = document.createElement('img');
+  img.className = classe || 'cartao-bandeira';
+  img.src = 'https://flagcdn.com/w80/' + codigo + '.png';
+  img.srcset = 'https://flagcdn.com/w160/' + codigo + '.png 2x';
+  img.alt = '';
+  img.onerror = function() { this.onerror = null; this.hidden = true; };
+  return img;
+}
+
+// Visual do time: bandeira (selecao) ou escudo generico (clube).
+function criarVisualTime(time, classeBandeira) {
+  if (time.categoria === 'clube') return criarEscudoClube(time);
+  var codigo = time.bandeira || BANDEIRAS_POR_ID[time.id] || '';
+  return codigoBandeiraValido(codigo) ? criarBandeira(codigo, classeBandeira) : null;
+}
+
 function irParaSelecao() {
   var grade = document.getElementById('grade-selecoes');
+  var gradeClubes = document.getElementById('grade-clubes');
+  var tituloClubes = document.getElementById('titulo-clubes');
+  var botaoConfirmar = document.getElementById('botao-confirmar-selecao');
   grade.textContent = '';
+  gradeClubes.textContent = '';
+
+  // Se o time escolhido antes nao estiver mais disponivel, desmarca.
+  var escolhido = SELECOES.find(function(t) { return t.id === estado.selecaoId; });
+  if (!escolhido || !timeDisponivel(escolhido)) estado.selecaoId = null;
+
+  var todasAsGrades = document.getElementById('tela-selecao');
+  var totalClubes = 0;
 
   // SELECOES ja chega validada (data.js → validarSelecao). Mesmo assim,
   // nada aqui concatena texto em HTML: so createElement/textContent.
   SELECOES.forEach(function(sel) {
-    var codigo = sel.bandeira || BANDEIRAS_POR_ID[sel.id] || '';
+    if (!timeDisponivel(sel)) return;
+    var ehClube = sel.categoria === 'clube';
     var cartao = document.createElement('button');
-    cartao.className = 'cartao';
+    cartao.className = 'cartao' + (ehClube ? ' cartao-clube' : '');
     cartao.type = 'button';
-    cartao.setAttribute('aria-pressed', 'false');
+    var ativo = estado.selecaoId === sel.id;
+    cartao.classList.toggle('cartao-selecionado', ativo);
+    cartao.setAttribute('aria-pressed', ativo ? 'true' : 'false');
 
-    if (codigoBandeiraValido(codigo)) {
-      var img = document.createElement('img');
-      img.className = 'cartao-bandeira';
-      img.src = 'https://flagcdn.com/w80/' + codigo + '.png';
-      img.srcset = 'https://flagcdn.com/w160/' + codigo + '.png 2x';
-      img.alt = '';
-      img.onerror = function() { this.onerror = null; this.hidden = true; };
-      cartao.appendChild(img);
-    }
+    var visual = criarVisualTime(sel);
+    if (visual) cartao.appendChild(visual);
     var titulo = document.createElement('span');
     titulo.className = 'cartao-titulo';
     titulo.textContent = sel.nome;
@@ -562,20 +675,29 @@ function irParaSelecao() {
 
     cartao.addEventListener('click', function() {
       SFX.clique();
-      marcarSelecionado(grade, '.cartao', 'cartao-selecionado', cartao);
+      marcarSelecionado(todasAsGrades, '.cartao', 'cartao-selecionado', cartao);
       estado.selecaoId = sel.id;
-      document.getElementById('botao-confirmar-selecao').disabled = false;
+      botaoConfirmar.disabled = false;
     });
-    grade.appendChild(cartao);
+    if (ehClube) { gradeClubes.appendChild(cartao); totalClubes++; }
+    else grade.appendChild(cartao);
   });
-  document.getElementById('botao-confirmar-selecao').disabled = true;
+  gradeClubes.hidden = totalClubes === 0;
+  tituloClubes.hidden = totalClubes === 0;
+  botaoConfirmar.disabled = !estado.selecaoId;
   mostrarTela('tela-selecao');
 }
 
 function initSelecao() {
   document.getElementById('botao-confirmar-selecao').addEventListener('click', function() {
+    if (!estado.selecaoId) return;
     SFX.selecionar();
     irParaDificuldade();
+  });
+  var botaoLoja = document.getElementById('botao-loja-selecao');
+  if (botaoLoja) botaoLoja.addEventListener('click', function() {
+    SFX.clique();
+    if (typeof Loja !== 'undefined') Loja.abrir('tela-selecao', 'clube');
   });
 }
 
@@ -662,7 +784,7 @@ function irParaFases() {
     if (melhorPts > 0) {
       var recorde = criarSpan('cartao-descricao', 'Recorde: ' + melhorPts + ' ');
       recorde.appendChild(criarIconeCruzeiro(''));
-      recorde.appendChild(document.createTextNode('Cruzeiro'));
+      recorde.appendChild(document.createTextNode(melhorPts === 1 ? 'Cruzeiro' : 'Cruzeiros'));
       cartao.appendChild(recorde);
     }
 
@@ -870,7 +992,10 @@ function initFase1() {
   var botaoOuvir = document.getElementById('botao-ouvir-novamente');
   if (botaoOuvir) {
     botaoOuvir.addEventListener('click', function() {
-      if (estado.perguntaAtual) Narracao.falar(estado.perguntaAtual.textoFalado);
+      // Pedido explicito da crianca: fala mesmo com a narracao automatica
+      // desligada (antes o botao nao fazia nada nesse caso).
+      SFX.clique();
+      if (estado.perguntaAtual) Narracao.falar(estado.perguntaAtual.textoFalado, { forcar: true });
     });
   }
   desenharFaixaIdealForca('meia');
@@ -1177,7 +1302,7 @@ function finalizarCobranca(detalhes) {
     estado.pontuacao += pontosGanhos;
     feedback.textContent = 'GOOOL! +' + pontosGanhos + ' ';
     feedback.appendChild(criarIconeCruzeiro(''));
-    feedback.appendChild(document.createTextNode('Cruzeiro!'));
+    feedback.appendChild(document.createTextNode('Cruzeiros!'));
     Narracao.falar('Gol!');
   } else if (resultado === 'fora') {
     // Reaproveita o som existente de "sem gol" — nao criar SFX novo.
@@ -1222,7 +1347,7 @@ function atualizarDisplayPontuacao() {
   var el = document.getElementById('pontuacao-display');
   if (!el) return;
   el.textContent = estado.pontuacao + ' ';
-  el.appendChild(criarIconeCruzeiro('estrelinhas Cruzeiro'));
+  el.appendChild(criarIconeCruzeiro('Cruzeiros'));
 }
 
 // ---------- Resultado ----------
@@ -1298,7 +1423,12 @@ function irParaResultado() {
   var pontuacaoFinal = document.getElementById('pontuacao-final');
   pontuacaoFinal.textContent = estado.pontuacao + ' ';
   pontuacaoFinal.appendChild(criarIconeCruzeiro(''));
-  pontuacaoFinal.appendChild(document.createTextNode('Cruzeiro'));
+  pontuacaoFinal.appendChild(document.createTextNode(estado.pontuacao === 1 ? 'Cruzeiro' : 'Cruzeiros'));
+
+  // Os Cruzeiros da partida vao para a carteira (gastos na Loja).
+  ultimoGanho = estado.pontuacao;
+  if (typeof Carteira !== 'undefined') Carteira.adicionar(estado.pontuacao);
+  atualizarGanhoCarteira();
 
   var mensagem = sortearMensagemResultado(estado.gols, fase.cobrancas);
   document.getElementById('resumo-resultado').textContent = mensagem;
@@ -1336,10 +1466,24 @@ function irParaResultado() {
   mostrarTela('tela-resultado');
 }
 
+var ultimoGanho = 0;
+
+function atualizarGanhoCarteira() {
+  var el = document.getElementById('ganho-carteira');
+  if (!el || typeof Carteira === 'undefined') return;
+  el.textContent = (ultimoGanho > 0 ? '+' + Carteira.formatar(ultimoGanho) + ' na sua carteira! ' : '') +
+    'Saldo: ' + Carteira.formatar(Carteira.saldo()) + '.';
+}
+
 function initResultado() {
   document.getElementById('botao-voltar-menu').addEventListener('click', function() {
     SFX.clique();
     sairParaMenu();
+  });
+  var botaoLojaResultado = document.getElementById('botao-loja-resultado');
+  if (botaoLojaResultado) botaoLojaResultado.addEventListener('click', function() {
+    SFX.clique();
+    if (typeof Loja !== 'undefined') Loja.abrir('tela-resultado');
   });
   var botaoProxFase = document.getElementById('botao-proxima-fase');
   if (botaoProxFase) {
@@ -1648,10 +1792,55 @@ function initBackup() {
     });
   }
 
+  // R10: restaurar SUBSTITUI o progresso atual, entao pede confirmacao
+  // antes de gravar (o arquivo ja foi validado neste ponto).
+  var blocoConfirmar = document.getElementById('confirmar-restauracao');
+  var botaoSimRestaurar = document.getElementById('botao-confirmar-restauracao');
+  var botaoNaoRestaurar = document.getElementById('botao-cancelar-restauracao');
+  var restauracaoPendente = null;
+
+  function esconderConfirmacao() {
+    restauracaoPendente = null;
+    if (blocoConfirmar) blocoConfirmar.hidden = true;
+  }
+
+  function executarRestauracao(texto, tamanho) {
+    restaurarBackupDeTexto(texto, tamanho).then(function(tipo) {
+      if (tipo === 'local') {
+        mostrarStatusBackup('✅ Backup local restaurado! Recarregando...');
+        setTimeout(function() { location.reload(); }, 1500);
+      } else {
+        mostrarStatusBackup('✅ Backup da nuvem restaurado!');
+      }
+    }).catch(function(erro) {
+      mostrarStatusBackup('❌ ' + (erro && erro.message ? erro.message : 'Arquivo de backup inválido.'), true);
+    });
+  }
+
+  if (botaoSimRestaurar) botaoSimRestaurar.addEventListener('click', function() {
+    if (!restauracaoPendente) return;
+    SFX.selecionar();
+    var p = restauracaoPendente;
+    esconderConfirmacao();
+    if (botaoRestaurar) botaoRestaurar.focus();
+    executarRestauracao(p.texto, p.tamanho);
+  });
+  if (botaoNaoRestaurar) botaoNaoRestaurar.addEventListener('click', function() {
+    SFX.clique();
+    esconderConfirmacao();
+    mostrarStatusBackup('Restauração cancelada. Nada foi alterado.');
+    if (botaoRestaurar) botaoRestaurar.focus();
+  });
+  // Fechar o modal descarta a confirmacao pendente.
+  if (botaoFechar) botaoFechar.addEventListener('click', esconderConfirmacao);
+  sobreposicao.addEventListener('click', function(ev) { if (ev.target === sobreposicao) esconderConfirmacao(); });
+  document.addEventListener('keydown', function(ev) { if (ev.key === 'Escape') esconderConfirmacao(); });
+
   if (inputRestaurar) {
     inputRestaurar.addEventListener('change', function(ev) {
       var arquivo = ev.target.files && ev.target.files[0];
       inputRestaurar.value = '';
+      esconderConfirmacao();
       if (!arquivo) return;
       if (arquivo.size > ValidacaoBackup.TAMANHO_MAXIMO_BYTES) {
         mostrarStatusBackup('❌ Arquivo grande demais para ser um backup do MathGol.', true);
@@ -1660,16 +1849,20 @@ function initBackup() {
       var leitor = new FileReader();
       leitor.onerror = function() { mostrarStatusBackup('❌ Não foi possível ler o arquivo.', true); };
       leitor.onload = function(e) {
-        restaurarBackupDeTexto(String(e.target.result || ''), arquivo.size).then(function(tipo) {
-          if (tipo === 'local') {
-            mostrarStatusBackup('✅ Backup local restaurado! Recarregando...');
-            setTimeout(function() { location.reload(); }, 1500);
-          } else {
-            mostrarStatusBackup('✅ Backup da nuvem restaurado!');
-          }
-        }).catch(function(erro) {
-          mostrarStatusBackup('❌ ' + (erro && erro.message ? erro.message : 'Arquivo de backup inválido.'), true);
-        });
+        var texto = String(e.target.result || '');
+        // Valida ANTES de perguntar: arquivo ruim ja mostra o erro direto.
+        var analise = ValidacaoBackup.analisarArquivo(texto, arquivo.size);
+        if (!analise.ok) {
+          mostrarStatusBackup('❌ ' + analise.erro, true);
+          return;
+        }
+        restauracaoPendente = { texto: texto, tamanho: arquivo.size };
+        var el = document.getElementById('backup-status');
+        if (el) { el.textContent = ''; el.classList.remove('erro'); }
+        if (blocoConfirmar) {
+          blocoConfirmar.hidden = false;
+          if (botaoNaoRestaurar) botaoNaoRestaurar.focus();
+        }
       };
       leitor.readAsText(arquivo);
     });
@@ -1693,6 +1886,9 @@ document.addEventListener('DOMContentLoaded', function() {
   initFases();
   initFase1();
   initResultado();
+  initSaldoTopo();
+  if (typeof initLoja === 'function') initLoja();
+  if (typeof initTutorial === 'function') initTutorial();
   initCreditos();
   initBackup();
   mostrarTela('tela-menu', { focar: false });

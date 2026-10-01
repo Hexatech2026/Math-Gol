@@ -103,6 +103,10 @@ Firebase (Authentication → Método de login) e publicar
 | Visual dos créditos e do backup | `CSS/styles.css` → seções "Modal de creditos" e "Modal de backup" |
 | Perguntas de matemática | `JS/banco-questoes.js` e `JS/questions.js` |
 | Cores do tema | `CSS/styles.css` → bloco `:root` (topo do arquivo) |
+| Preços e itens da Loja, times do Brasileirão | `JS/data.js` (times/nomes) e `JS/avatar-data.js` (avatares) |
+| Saldo / regras da carteira de Cruzeiros | `JS/carteira.js` |
+| Textos e ilustrações do tutorial | `JS/tutorial.js` → `PASSOS`; visual em `CSS/styles.css` → seção "Tutorial" |
+| Ver o tutorial de novo como na 1ª vez | no console: `localStorage.removeItem('mathgol_tutorial_visto')` |
 
 ---
 

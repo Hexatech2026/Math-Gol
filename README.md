@@ -52,6 +52,36 @@ chute). A bola conta como dentro só se passar **inteira** (o raio da bola
 Sem nome real, sem e-mail e sem cadastro: a nuvem usa **login anônimo** do
 Firebase.
 
+## Novidades da v1.5
+
+- **Cruzeiros (moeda do jogo):** a pontuação de cada partida (10 a 100 por
+  gol, conforme a rapidez da resposta) vai para a carteira. O saldo aparece
+  no topo de todas as telas (toque nele para abrir a Loja).
+- **Loja do Craque** (menu → 🛒 Loja), com confirmação antes de cada compra:
+  | Aba | Itens | Preço |
+  |---|---|---|
+  | 🌎 Seleções | 12 seleções (8 antigas + Holanda, Uruguai, Marrocos, EUA) | 120–150 |
+  | 🇧🇷 Brasileirão | os **20 clubes da Série A 2026** (escudo ilustrativo com as cores do time — não usamos escudos oficiais) | 200 |
+  | 🙂 Avatares | 12 avatares | 80–120 |
+  | 🏷️ Nomes | 8 personagens + 6 animais | 60 |
+- **Listas grátis reduzidas:** 4 seleções (Brasil, Argentina, França,
+  Alemanha), 6 avatares (sem abas), 8 personagens e 6 animais. O resto se
+  libera na Loja.
+- **Tutorial "Como jogar"** em 6 passos ilustrados (conta → defesa → mira →
+  tipo de chute → força → gol/Cruzeiros). Abre sozinho no primeiro "Jogar"
+  e pelo botão ❓ do menu. Setas ← → navegam; respeita movimento reduzido.
+- **Animações ~35% mais rápidas** (`TEMPO` em `game.js`/`game-2d.js`,
+  pausas em `main.js`). A velocidade das barras de altura/força **não**
+  mudou (mexeria na dificuldade).
+- **Correções de botões:** CTA pulsante não "afundava" ao toque; aba ativa de
+  avatar sem destaque; botões desabilitados reagiam a hover/toque; "Ouvir
+  novamente" não falava com a narração desligada; **Restaurar backup agora
+  pede confirmação** (R10); com movimento reduzido a jogada sumia em 60 ms
+  (R08); títulos "Personagem/Animal/Avatar" ilegíveis no fundo escuro.
+
+A carteira fica no navegador (`mathgol_carteira`) e entra no backup local.
+Ainda **não** é salva no Firebase (exigiria mudar `Config/firestore.rules`).
+
 ## Estrutura do projeto
 
 ```
@@ -59,8 +89,8 @@ index.html   entrada na raiz → redireciona para HTML/index.html (link relativo
 HTML/        index.html (o jogo)
 CSS/         styles.css
 JS/          regras-chute.js, backup-validacao.js, carregar-externos.js, data.js, avatar-data.js,
-             questions.js, banco-questoes.js, narration.js, sfx.js,
-             game.js, game-2d.js, progressao.js, main.js,
+             carteira.js, questions.js, banco-questoes.js, narration.js, sfx.js,
+             game.js, game-2d.js, progressao.js, main.js, loja.js, tutorial.js,
              firebase-config.js, seed-firestore.js
 Config/      firestore.rules
 Imagens/     logos, estrela, favicon, foto da equipe
@@ -75,7 +105,10 @@ raiz         package.json, firebase.json, playwright.config.js, vercel.json
 | `JS/game-2d.js` | modo simplificado 2D (DOM + CSS), mesmo contrato e mesma regra do 3D |
 | `JS/main.js` | navegação, ciclo de vida da partida, mira/força (Pointer Events + teclado), modais |
 | `JS/backup-validacao.js` | validação de backups e de resultados antes de gravar |
-| `JS/data.js` | listas padrão + validação das configurações vindas do Firestore |
+| `JS/data.js` | catálogo (nomes, seleções, clubes da Série A 2026, preços) + validação das configurações vindas do Firestore |
+| `JS/carteira.js` | carteira de Cruzeiros: saldo, ganhos e itens comprados (localStorage) |
+| `JS/loja.js` | tela da Loja e modal de confirmação de compra |
+| `JS/tutorial.js` | tela "Como jogar" (6 passos ilustrados) |
 | `JS/progressao.js` | fases, desbloqueio e recordes (localStorage) |
 | `JS/firebase-config.js` | Firebase Auth anônimo + Firestore |
 | `JS/seed-firestore.js` | script Node que popula as coleções de configuração |
@@ -212,9 +245,9 @@ O que fazer com eles:
 
 | Ação | O que faz |
 |---|---|
-| 📥 Exportar Progresso Local | `.json` só com as chaves conhecidas: `mathgol_acessibilidade`, `mathgol_progressao`, `mathgol_ultimo_resultado` |
+| 📥 Exportar Progresso Local | `.json` só com as chaves conhecidas: `mathgol_acessibilidade`, `mathgol_progressao`, `mathgol_ultimo_resultado`, `mathgol_carteira` |
 | ☁️ Exportar Dados do Firebase | `.json` com perfil (apelido + avatar) e histórico de resultados do usuário logado. Sem `uid` e sem token |
-| 📤 Restaurar Backup | valida e restaura |
+| 📤 Restaurar Backup | valida, **pede confirmação** e restaura |
 
 A restauração (e também a leitura normal do progresso local) confere a
 coerência com as fases: recorde de gols até o número de cobranças da fase,

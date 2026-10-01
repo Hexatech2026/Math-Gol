@@ -57,21 +57,22 @@ const GOLEIRO_BASE = { x: 0, y: 1.2, z: 0.3 }; // centro do tronco
 const ALCANCE_MAOS = 0.95; // do centro do tronco ate as maos, com bracos para cima
 
 // Ritmo da animacao (ms). Tudo passa por d() para respeitar prefers-reduced-motion.
+// v1.5: animacoes ~35% mais rapidas (valores antigos no comentario).
 const TEMPO = {
-  CORRIDA: 760,           // batedor caminha ate a marca
-  PERNA_TRAS: 300,        // batedor arma o chute
-  PERNA_FRENTE: 280,      // perna desce ate encostar na bola
-  PERNA_VOLTA: 350,       // pe volta a posicao de descanso
-  VOO_BOLA: 1200,         // bola voa ate a zona
+  CORRIDA: 480,           // batedor caminha ate a marca            (760)
+  PERNA_TRAS: 200,        // batedor arma o chute                   (300)
+  PERNA_FRENTE: 180,      // perna desce ate encostar na bola       (280)
+  PERNA_VOLTA: 240,       // pe volta a posicao de descanso         (350)
+  VOO_BOLA: 800,          // bola voa ate a zona                    (1200)
   GIRO_BOLA: 4 * Math.PI,
-  MERGULHO_GOLEIRO: 1000, // goleiro mergulha acompanhando a bola
-  IMPACTO_DEFESA: 250,    // impacto da defesa (visual)
-  BOLA_NA_REDE: 400,      // a bola afunda na rede depois do gol
-  REBOTE: 400,            // rebote na defesa
-  VIBRACAO_REDE: 300,     // rede balanca
-  COMEMORA_TORCIDA: 1600, // torcida vibra no gol
-  LAMENTA_TORCIDA: 600,   // torcida lamenta na defesa/fora
-  ANTES_DE_RESETAR: 1800  // pausa antes de resetar
+  MERGULHO_GOLEIRO: 680,  // goleiro mergulha acompanhando a bola   (1000)
+  IMPACTO_DEFESA: 180,    // impacto da defesa (visual)             (250)
+  BOLA_NA_REDE: 280,      // a bola afunda na rede depois do gol    (400)
+  REBOTE: 280,            // rebote na defesa                       (400)
+  VIBRACAO_REDE: 220,     // rede balanca                           (300)
+  COMEMORA_TORCIDA: 1100, // torcida vibra no gol                   (1600)
+  LAMENTA_TORCIDA: 420,   // torcida lamenta na defesa/fora         (600)
+  ANTES_DE_RESETAR: 1200  // pausa antes de resetar                 (1800)
 };
 
 const CAMISA_PRIMARIA_PADRAO = 0x3a5fcd;
@@ -736,7 +737,7 @@ function criarJogoPenalti(containerId, selecaoId) {
         cairNoChao(TEMPO.REBOTE);
         lamentarTorcida();
         if (aoFinalizar) aoFinalizar({ gol: false, fora: false, motivo: 'defesa' });
-        resetPendente = animar(reduzMovimento ? 60 : TEMPO.ANTES_DE_RESETAR, null, resetar);
+        resetPendente = animar(TEMPO.ANTES_DE_RESETAR, null, resetar); // R08: mesmo com movimento reduzido, o resultado fica visivel
       }, { ease: EASE.quadOut });
     }
 
@@ -841,7 +842,7 @@ function criarJogoPenalti(containerId, selecaoId) {
         lamentarTorcida();
       }
       if (aoFinalizar) aoFinalizar({ gol: r.dentro, fora: !r.dentro, motivo: r.motivo, tipo: r.tipo });
-      resetPendente = animar(reduzMovimento ? 60 : TEMPO.ANTES_DE_RESETAR, null, resetar);
+      resetPendente = animar(TEMPO.ANTES_DE_RESETAR, null, resetar); // R08: mesmo com movimento reduzido, o resultado fica visivel
     }
 
     animarChute(iniciarBolaEGoleiro);
