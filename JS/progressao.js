@@ -44,7 +44,7 @@ var Progressao = (function() {
       cobrancas: 5,
       timerMax: 12,
       golsParaDesbloquear: 3,
-      dificuldadeForcar: null // o nivel sobe via ESCALAR_DIFICULDADE
+      dificuldadeForcar: null // o nivel sobe via PASSO_POR_FASE
     },
     {
       id: 'final',
@@ -59,12 +59,15 @@ var Progressao = (function() {
     }
   ];
 
-  // Mapa: dificuldade escolhida -> dificuldade efetiva por fase
-  var ESCALAR_DIFICULDADE = {
-    'facil':   ['facil', 'medio', 'dificil'],
-    'medio':   ['medio', 'dificil', 'dificil'],
-    'dificil': ['dificil', 'dificil', 'dificil']
-  };
+  // Quanto o nivel sobe a cada fase.
+  //
+  // ANTES isto era um mapa de 3 dificuldades e o salto era brutal: quem
+  // escolhia "facil" encarava a fase 3 em "dificil" — saia de 2 + 3 e caia
+  // em 7 x 9 e divisao na mesma sessao. Era a reclamacao de quem testou.
+  //
+  // Agora a escada tem 12 degraus (niveis.js) e cada fase sobe UM. Da fase 1
+  // a 3 o jogador anda 2 degraus pequenos, nao 2 abismos.
+  var PASSO_POR_FASE = 1;
 
   var progresso = {
     fasesDesbloqueadas: ['penaltis'], // sempre comeca com a primeira
@@ -172,10 +175,17 @@ var Progressao = (function() {
     return 0;
   }
 
-  function dificuldadeEfetiva(dificuldadeEscolhida, faseId) {
+  // Nivel efetivo da fase: o nivel de partida + um degrau por fase.
+  //
+  // Aceita numero (nivel novo, 1..12) ou 'facil'/'medio'/'dificil' (progresso
+  // salvo antes da escada existir), traduzido por niveis.js — por isso
+  // ninguem perde o que ja tinha.
+  function dificuldadeEfetiva(nivelOuDificuldade, faseId) {
+    var base = typeof nivelOuDificuldade === 'number'
+      ? nivelOuDificuldade
+      : nivelDaDificuldadeAntiga(nivelOuDificuldade);
     var idx = indiceFase(faseId);
-    var escala = ESCALAR_DIFICULDADE[dificuldadeEscolhida] || ESCALAR_DIFICULDADE['facil'];
-    return escala[Math.min(idx, escala.length - 1)];
+    return obterNivel(base + idx * PASSO_POR_FASE).id; // obterNivel limita em 1..12
   }
 
   // Registra resultado de uma fase. Retorna { desbloqueou: bool, proximaFase: string|null }

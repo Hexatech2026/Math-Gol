@@ -3104,3 +3104,178 @@ body.alto-contraste .botao-cta-simples {
   .tela-loja { max-width: 720px; }
   .loja-lista { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ========================================================================
+   HU-14 — Sala do Professor  (bloco ACRESCENTADO, nada acima foi alterado)
+
+   Observacao: ".rotulo-campo" ja existe neste arquivo com texto escuro,
+   usado na tela de apelido. Aqui ele e redefinido SO dentro das telas da
+   sala, que tem fundo escuro — por isso o seletor com escopo em vez de
+   mexer na regra original.
+   ======================================================================== */
+
+.faixa-sala {
+  width: 100%;
+  margin: 14px 0 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--branco-giz);
+  border: 2px solid var(--grafite);
+  color: var(--grafite);
+  font-size: 0.8rem;
+  text-align: center;
+}
+.link-sair {
+  background: none;
+  border: none;
+  color: #B3261E;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  padding: 0 2px;
+}
+.link-sair:focus-visible { outline: 3px solid var(--amarelo-sol); outline-offset: 2px; }
+
+.texto-apoio {
+  font-size: 0.86rem;
+  color: var(--branco-giz);
+  margin: 0 0 14px;
+  max-width: 44ch;
+}
+
+#tela-entrar-sala .rotulo-campo,
+.tela-professor .rotulo-campo {
+  display: block;
+  width: 100%;
+  font-family: var(--fonte-titulo);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--branco-giz);
+  margin: 12px 0 5px;
+  text-align: left;
+}
+
+.campo-sala {
+  width: 100%;
+  font-size: 0.95rem;
+  padding: 9px 12px;
+  border: 3px solid var(--grafite);
+  border-radius: 12px;
+  background: var(--branco-giz);
+  color: var(--grafite);
+}
+.campo-sala:focus-visible { outline: 3px solid var(--amarelo-sol); outline-offset: 2px; }
+
+.campo-codigo-sala {
+  width: 190px;
+  font-family: var(--fonte-titulo);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 12px;
+  border: 3px solid var(--grafite);
+  border-radius: 12px;
+  background: var(--branco-giz);
+  color: var(--grafite);
+}
+.campo-codigo-sala:focus-visible { outline: 3px solid var(--amarelo-sol); outline-offset: 2px; }
+
+.grupo-tipos { border: none; padding: 0; margin: 0; width: 100%; }
+.linha-tipos { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip-tipo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--fonte-titulo);
+  font-size: 0.78rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 2px solid var(--grafite);
+  background: var(--branco-giz);
+  color: var(--grafite);
+  cursor: pointer;
+}
+.chip-tipo:focus-within { outline: 3px solid var(--amarelo-sol); outline-offset: 2px; }
+
+.codigo-sala {
+  font-family: var(--fonte-titulo);
+  font-size: 2.1rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--grafite);
+  background: var(--branco-giz);
+  border-radius: 12px;
+  padding: 8px 18px;
+  margin: 0 auto 12px;
+  width: fit-content;
+  user-select: all;
+}
+
+.contagem-alunos { color: var(--amarelo-sol); font-variant-numeric: tabular-nums; }
+
+.lista-alunos {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.item-aluno {
+  display: grid;
+  grid-template-columns: 34px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  background: var(--branco-giz);
+  border: 2px solid var(--grafite);
+  border-radius: 12px;
+  color: var(--grafite);
+}
+.aluno-avatar { width: 34px; height: 34px; border-radius: 50%; }
+.aluno-nome { font-family: var(--fonte-titulo); font-weight: 600; font-size: 0.86rem; text-align: left; }
+.aluno-placar { font-family: var(--fonte-titulo); font-weight: 700; font-size: 0.86rem; }
+.aluno-pontos {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  background: var(--amarelo-sol);
+  border-radius: 999px;
+  padding: 1px 9px;
+}
+.aluno-vazio {
+  color: var(--branco-giz);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 14px;
+  border: 2px dashed var(--branco-giz);
+  border-radius: 12px;
+}
+
+.aviso-sala {
+  font-family: var(--fonte-titulo);
+  font-size: 0.85rem;
+  color: var(--branco-giz);
+  min-height: 1.4em;
+  margin: 12px 0 0;
+}
+.aviso-sala.erro { color: #FFD166; }
+.aviso-sala.ok { color: #8FE3AC; }
+
+/* Etiqueta com os simbolos das operacoes no cartao de nivel */
+.etiqueta-tipo {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--fonte-titulo);
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  color: var(--verde-texto);
+}
+
+body.alto-contraste .etiqueta-tipo { color: var(--grafite); }
+body.alto-contraste .chip-tipo,
+body.alto-contraste .campo-sala,
+body.alto-contraste .campo-codigo-sala,
+body.alto-contraste .item-aluno { border-width: 3px; }

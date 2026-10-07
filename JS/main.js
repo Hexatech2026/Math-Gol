@@ -250,7 +250,9 @@ var TELA_ANTERIOR = {
   'tela-dificuldade':'tela-selecao',
   'tela-fases':      'tela-dificuldade',
   'tela-fase1':      'tela-fases',
-  'tela-resultado':  'tela-fases'
+  'tela-resultado':  'tela-fases',
+  'tela-entrar-sala':'tela-menu',
+  'tela-professor':  'tela-menu'
 };
 
 // opcoes.focar === false: nao move o foco (ex.: carga inicial da pagina).
@@ -710,21 +712,45 @@ function criarSpan(classe, texto) {
   return s;
 }
 
+// Escolha do nivel.
+//
+// Antes esta tela listava DIFICULDADES (facil/medio/dificil). Com so tres
+// degraus, a escalada entre fases era um abismo: quem escolhia facil somava
+// 2 + 3 na fase 1 e encarava 7 x 9 e divisao na fase 3. Agora lista os 12
+// niveis de niveis.js, cada um dizendo o tipo de conta e o tamanho dos
+// numeros.
+//
+// estado.dificuldadeId continua sendo o campo usado pelo resto do codigo —
+// so passou a guardar um numero (1..12) em vez de 'facil'/'medio'/'dificil'.
+// Progressao.dificuldadeEfetiva() aceita os dois formatos, entao progresso
+// salvo antes desta mudanca continua valendo.
 function irParaDificuldade() {
+  // Numa sala, quem manda no nivel e o professor: nao faz sentido deixar a
+  // crianca escolher outro.
+  if (Sala.estaNaSala() && Sala.nivelDaSala()) {
+    estado.dificuldadeId = Sala.nivelDaSala();
+    irParaFases();
+    return;
+  }
+
   var grade = document.getElementById('grade-dificuldades');
   grade.textContent = '';
-  DIFICULDADES.forEach(function(dif) {
+  NIVEIS.forEach(function(nv) {
     var cartao = document.createElement('button');
-    cartao.className = 'cartao';
+    cartao.className = 'cartao cartao-nivel';
     cartao.type = 'button';
     cartao.setAttribute('aria-pressed', 'false');
-    cartao.appendChild(criarSpan('cartao-icone-dificuldade', dif.icone));
-    cartao.appendChild(criarSpan('cartao-titulo', dif.nome));
-    cartao.appendChild(criarSpan('cartao-descricao', dif.descricao));
+    cartao.setAttribute('aria-label', rotuloNivel(nv.id) + '. ' + nv.descricao);
+    cartao.appendChild(criarSpan('cartao-icone-dificuldade', String(nv.id)));
+    cartao.appendChild(criarSpan('cartao-titulo', nv.nome));
+    cartao.appendChild(criarSpan('cartao-descricao', nv.descricao));
+    cartao.appendChild(criarSpan('etiqueta-tipo', nv.tipos.map(function(t) {
+      return TIPOS_OPERACAO[t].simbolo;
+    }).join(' ')));
     cartao.addEventListener('click', function() {
       SFX.clique();
       marcarSelecionado(grade, '.cartao', 'cartao-selecionado', cartao);
-      estado.dificuldadeId = dif.id;
+      estado.dificuldadeId = nv.id;
       document.getElementById('botao-confirmar-dificuldade').disabled = false;
     });
     grade.appendChild(cartao);
@@ -961,8 +987,14 @@ function esconderEtapaRespostas() {
 }
 
 function carregarProximaPergunta() {
-  var dificuldadeEfetiva = Progressao.dificuldadeEfetiva(estado.dificuldadeId, estado.faseAtual);
-  estado.perguntaAtual = BancoQuestoes.sortearPergunta(dificuldadeEfetiva);
+  // Nivel de partida + um degrau por fase (PASSO_POR_FASE em progressao.js).
+  // Numa sala, o nivel e o que o professor definiu, e os filtros limitam os
+  // tipos de conta (ex.: so subtracao).
+  var nivelBase = Sala.estaNaSala() && Sala.nivelDaSala()
+    ? Sala.nivelDaSala()
+    : estado.dificuldadeId;
+  var nivelDaVez = Progressao.dificuldadeEfetiva(nivelBase, estado.faseAtual);
+  estado.perguntaAtual = BancoQuestoes.sortearPergunta(nivelDaVez, Sala.filtrosDaSala());
   document.getElementById('mensagem-feedback').textContent = '';
   document.getElementById('pergunta-texto').textContent = estado.perguntaAtual.texto;
   mostrarEtapaRespostas();
@@ -1428,6 +1460,17 @@ function irParaResultado() {
   // Os Cruzeiros da partida vao para a carteira (gastos na Loja).
   ultimoGanho = estado.pontuacao;
   if (typeof Carteira !== 'undefined') Carteira.adicionar(estado.pontuacao);
+
+  // HU-14: manda o resultado pro painel do professor, se estiver numa sala.
+  if (Sala.estaNaSala()) {
+    Sala.reportarResultado({
+      apelido: estado.apelido || 'Craque',
+      avatarSeed: estado.avatarSeed,
+      gols: estado.gols,
+      pontuacao: estado.pontuacao,
+      fase: fase.id
+    });
+  }
   atualizarGanhoCarteira();
 
   var mensagem = sortearMensagemResultado(estado.gols, fase.cobrancas);
@@ -1869,6 +1912,222 @@ function initBackup() {
   }
 }
 
+// ---------- HU-14: Sala (lado da crianca) ----------
+
+function atualizarFaixaSala() {
+  var faixa = document.getElementById('faixa-sala');
+  if (!faixa) return;
+  faixa.textContent = '';
+
+  if (!Sala.estaNaSala()) { faixa.hidden = true; return; }
+  faixa.hidden = false;
+
+  faixa.appendChild(document.createTextNode('🚪 Sala '));
+  var forte = document.createElement('strong');
+  forte.textContent = Sala.nome();
+  faixa.appendChild(forte);
+  faixa.appendChild(document.createTextNode(' · ' + rotuloNivel(Sala.nivelDaSala()) + ' '));
+
+  var sair = document.createElement('button');
+  sair.type = 'button';
+  sair.className = 'link-sair';
+  sair.textContent = 'sair';
+  sair.addEventListener('click', function() {
+    SFX.clique();
+    Sala.sair();
+    atualizarFaixaSala();
+  });
+  faixa.appendChild(sair);
+}
+
+function initEntrarSala() {
+  var abrir = document.getElementById('botao-entrar-sala');
+  var confirmar = document.getElementById('botao-confirmar-sala');
+  var voltar = document.getElementById('botao-voltar-entrar-sala');
+  var campo = document.getElementById('input-sala');
+  var aviso = document.getElementById('aviso-entrar-sala');
+  if (!abrir || !confirmar || !campo) return;
+
+  function avisar(txt, classe) {
+    aviso.textContent = txt;
+    aviso.className = 'aviso-sala' + (classe ? ' ' + classe : '');
+  }
+
+  abrir.addEventListener('click', function() {
+    SFX.clique();
+    avisar('');
+    campo.value = '';
+    mostrarTela('tela-entrar-sala');
+  });
+  if (voltar) voltar.addEventListener('click', function() { SFX.clique(); mostrarTela('tela-menu'); });
+
+  confirmar.addEventListener('click', function() {
+    SFX.clique();
+    var cod = campo.value.trim();
+    if (!cod) { avisar('Digite o código primeiro.', 'erro'); return; }
+
+    avisar('Procurando a sala...');
+    Sala.entrar(cod, {
+      apelido: estado.apelido || 'Craque',
+      avatarSeed: estado.avatarSeed
+    }).then(function(r) {
+      if (!r.ok) {
+        avisar(r.motivo === 'offline'
+          ? 'Sem conexão com o servidor. Tente de novo em instantes.'
+          : 'Sala não encontrada. Confira as letras.', 'erro');
+        return;
+      }
+      avisar('Pronto! Você entrou em ' + r.sala.nome + '.', 'ok');
+      atualizarFaixaSala();
+      setTimeout(function() { mostrarTela('tela-menu'); }, 1200);
+    });
+  });
+}
+
+// ---------- HU-14: Painel do professor ----------
+
+function preencherSelectNiveis(select, selecionado) {
+  if (!select) return;
+  select.textContent = '';
+  NIVEIS.forEach(function(nv) {
+    var o = document.createElement('option');
+    o.value = String(nv.id);
+    o.textContent = nv.id + ' — ' + nv.nome + ' (' + nv.descricao + ')';
+    if (nv.id === selecionado) o.selected = true;
+    select.appendChild(o);
+  });
+}
+
+function tiposMarcados() {
+  var marcados = [];
+  document.querySelectorAll('#filtros-tipo input:checked').forEach(function(i) {
+    marcados.push(i.value);
+  });
+  return marcados;
+}
+
+function renderizarAlunos(lista) {
+  var ul = document.getElementById('lista-alunos');
+  var contagem = document.getElementById('prof-contagem');
+  if (!ul) return;
+  contagem.textContent = '(' + lista.length + ')';
+  ul.textContent = '';
+
+  if (!lista.length) {
+    var vazio = document.createElement('li');
+    vazio.className = 'aluno-vazio';
+    vazio.textContent = 'Ninguém entrou ainda. Dite o código para a turma.';
+    ul.appendChild(vazio);
+    return;
+  }
+
+  // Mais gols primeiro; empate decide pela pontuacao.
+  lista.sort(function(a, b) {
+    return (b.gols || 0) - (a.gols || 0) || (b.pontuacao || 0) - (a.pontuacao || 0);
+  });
+
+  lista.forEach(function(al) {
+    var li = document.createElement('li');
+    li.className = 'item-aluno';
+
+    var img = document.createElement('img');
+    img.className = 'aluno-avatar';
+    img.src = gerarUrlAvatar(al.avatarSeed || AVATAR_PADRAO.seed);
+    img.alt = '';
+    img.loading = 'lazy';
+    li.appendChild(img);
+
+    li.appendChild(criarSpan('aluno-nome', al.apelido || 'Craque'));
+    li.appendChild(criarSpan('aluno-placar', (al.gols || 0) + ' ⚽'));
+    li.appendChild(criarSpan('aluno-pontos', String(al.pontuacao || 0)));
+    ul.appendChild(li);
+  });
+}
+
+function mostrarPainelDaSala(sala) {
+  document.getElementById('prof-sem-sala').hidden = true;
+  document.getElementById('prof-com-sala').hidden = false;
+  document.getElementById('codigo-sala').textContent = sala.codigo;
+  document.getElementById('prof-nivel-atual').textContent = rotuloNivel(sala.nivel);
+
+  var selAtivo = document.getElementById('select-nivel-ativo');
+  preencherSelectNiveis(selAtivo, sala.nivel);
+  selAtivo.onchange = function() {
+    var novo = parseInt(selAtivo.value, 10);
+    Sala.mudarNivel(sala.codigo, novo, sala.tipos).then(function() {
+      sala.nivel = novo;
+      document.getElementById('prof-nivel-atual').textContent = rotuloNivel(novo);
+    });
+  };
+
+  renderizarAlunos([]);
+  Sala.observar(sala.codigo, renderizarAlunos);
+}
+
+function initProfessor() {
+  var abrir = document.getElementById('botao-professor');
+  var criar = document.getElementById('botao-criar-sala');
+  var fechar = document.getElementById('botao-fechar-painel');
+  var aviso = document.getElementById('aviso-prof');
+  if (!abrir || !criar) return;
+
+  function avisar(txt, classe) {
+    aviso.textContent = txt;
+    aviso.className = 'aviso-sala' + (classe ? ' ' + classe : '');
+  }
+
+  // Caixinhas de tipo de conta: deixam o professor restringir a sala a, por
+  // exemplo, so subtracao, sem precisar mexer em codigo.
+  var caixa = document.getElementById('filtros-tipo');
+  if (caixa && !caixa.children.length) {
+    Object.keys(TIPOS_OPERACAO).forEach(function(t) {
+      var id = 'tipo-' + t;
+      var rotulo = document.createElement('label');
+      rotulo.className = 'chip-tipo';
+      rotulo.setAttribute('for', id);
+      var cx = document.createElement('input');
+      cx.type = 'checkbox';
+      cx.id = id;
+      cx.value = t;
+      rotulo.appendChild(cx);
+      rotulo.appendChild(document.createTextNode(
+        ' ' + TIPOS_OPERACAO[t].simbolo + ' ' + TIPOS_OPERACAO[t].nome));
+      caixa.appendChild(rotulo);
+    });
+  }
+
+  abrir.addEventListener('click', function() {
+    SFX.clique();
+    avisar('');
+    preencherSelectNiveis(document.getElementById('select-nivel-sala'), 1);
+    document.getElementById('prof-sem-sala').hidden = false;
+    document.getElementById('prof-com-sala').hidden = true;
+    mostrarTela('tela-professor');
+  });
+
+  criar.addEventListener('click', function() {
+    SFX.selecionar();
+    if (!window.FirebaseMathGol) { avisar('Sem conexão com o servidor.', 'erro'); return; }
+
+    avisar('Criando a sala...');
+    Sala.criar({
+      nome: (document.getElementById('input-nome-turma').value || '').trim() || 'Turma',
+      nivel: parseInt(document.getElementById('select-nivel-sala').value, 10) || 1,
+      tipos: tiposMarcados()
+    }).then(function(sala) {
+      if (!sala) { avisar('Não consegui criar a sala. Tente de novo.', 'erro'); return; }
+      avisar('');
+      mostrarPainelDaSala(sala);
+    });
+  });
+
+  if (fechar) fechar.addEventListener('click', function() {
+    SFX.clique();
+    Sala.pararDeObservar(); // listener do Firestore nao pode ficar aberto
+    mostrarTela('tela-menu');
+  });
+}
+
 // ---------- Init ----------
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -1891,6 +2150,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if (typeof initTutorial === 'function') initTutorial();
   initCreditos();
   initBackup();
+  initEntrarSala();
+  initProfessor();
   mostrarTela('tela-menu', { focar: false });
 
 });
@@ -1899,6 +2160,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // ficar pronto, aplica as configuracoes remotas validadas.
 function carregarConfiguracoesRemotas() {
   if (!window.FirebaseMathGol) return;
+  // Sala so pode ser reaberta depois que o Firebase existe.
+  Sala.restaurar().then(atualizarFaixaSala);
+
   window.FirebaseMathGol.carregarConfiguracoes().then(function(config) {
     aplicarConfiguracoesRemotas(config);
   }).catch(function(erro) {

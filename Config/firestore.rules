@@ -140,6 +140,26 @@ service cloud.firestore {
     }
 
     // Nega tudo mais por padrão (inclui documentos antigos de "token").
+    // HU-14 — Sala do Professor. Quem sabe o codigo entra; o professor dita
+    // o codigo para a turma. Mesmo modelo anonimo do resto do jogo: o uid do
+    // Auth identifica quem entrou, sem nome real nem e-mail.
+    //
+    // RESSALVA (card R03): "dono" guarda o uid do professor, mas NAO e
+    // checado aqui — qualquer cliente com o codigo pode trocar o nivel da
+    // sala, e a lista de alunos e legivel por quem tiver o codigo.
+    // Para turma de verdade, trocar a linha de update por:
+    //   allow update: if request.auth != null
+    //                 && resource.data.dono == request.auth.uid;
+    match /salas/{codigo} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+
+      match /alunos/{uid} {
+        allow read, write: if true;
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
