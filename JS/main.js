@@ -70,7 +70,9 @@ var TIMER_MAX = 15;
 
 // Pausa entre a resposta correta e o inicio da mira.
 // v1.5: animacoes mais rapidas (antes 500 ms).
-var PAUSA_ANTES_DA_MIRA = 300;
+// Sobe de 300 para 900 ms: a etapa 1 (conta certa) precisa de tempo de
+// tela para a crianca ver a torcida reagir antes de ir para a mira.
+var PAUSA_ANTES_DA_MIRA = 900;
 // Tempo que o resultado fica na tela antes da proxima pergunta. Tem que ser
 // maior que TEMPO.ANTES_DE_RESETAR (game.js) pra bola ja estar na marca.
 // v1.5: 2200 → 1500 ms (ANTES_DE_RESETAR agora e 1200 ms).
@@ -102,6 +104,101 @@ var VERSAO_ULTIMO_RESULTADO = 2;
 
 // Ordem fixa das 5 alternativas <-> 5 zonas (usada no caminho de defesa).
 var ORDEM_ZONAS = ['topo-esquerda', 'topo-direita', 'meio', 'baixo-esquerda', 'baixo-direita'];
+
+// ======================================================================
+// Festa da jogada — as duas etapas (Sprint 4)
+// ======================================================================
+//
+// O retorno do professor na Sprint 4 foi: "tanto quando a crianca acerta
+// quanto quando erra aparece um feedback, mas sem destaque; precisei
+// prestar muita atencao para ver". A .mensagem-feedback continua no
+// lugar (e dela que os testes leem o texto), mas quem fala com a
+// crianca agora e a FAIXA, que ocupa o meio do campo.
+//
+// A jogada tem duas etapas, e elas sao avaliadas separadamente:
+//
+//   ETAPA 1  a conta. Acertou -> torcida da um grito curto, o batedor
+//            fica em pose confiante e a faixa marca "conta certa".
+//   ETAPA 2  o chute. Gol -> festa completa. Fora/defesa COM a conta
+//            certa -> acolhimento, porque a parte de matematica, que e
+//            o que o jogo ensina, ela acertou.
+//
+// Por isso existem tres conjuntos de frase, e nao dois: errar o chute
+// depois de acertar a conta nao e a mesma coisa que errar a conta.
+var FRASES_GOL = [
+  'GOLAÇO! Você é um craque da matemática!',
+  'INCRÍVEL! Resposta e chute perfeitos!',
+  'QUE GOL! A conta certa virou gol!',
+  'ESPETACULAR! Matemática e futebol juntos!',
+  'SHOW DE BOLA! Você acertou tudo!'
+];
+// Acertou a conta, perdeu o gol. Nunca "voce errou": a conta estava certa.
+var FRASES_QUASE = [
+  'Quase lá! Sua conta estava certinha, você é muito inteligente. Tente o chute de novo, você consegue!',
+  'A conta você matou! Faltou só o chute. Na próxima a bola entra!',
+  'Isso! A matemática estava perfeita. Agora é só caprichar na pontaria!',
+  'Você acertou o mais difícil, que era a conta. O gol vem na próxima!'
+];
+// Errou a conta: convida a tentar de novo, sem dizer que ela é ruim.
+var FRASES_CONTA = [
+  'Não foi dessa vez! Vamos tentar a próxima conta juntos?',
+  'Ops! Essa escapou. A próxima é sua!',
+  'Errar faz parte do treino. Bora para a próxima!'
+];
+var FRASES_ACERTO_CONTA = ['Conta certa! Agora é o chute!', 'Isso! Resposta correta!', 'Acertou! Prepara o pé!'];
+
+function sortear(lista) { return lista[Math.floor(Math.random() * lista.length)]; }
+
+// Mostra a faixa grande no meio do campo. duracao em ms; 0 = fica ate
+// alguem chamar esconderFaixa(). Sempre passa pela sessao: sair da
+// partida no meio nao pode deixar a faixa acesa na tela seguinte.
+// Tempo minimo que a faixa fica na tela. Existe por causa do movimento
+// reduzido: ali as animacoes duram 1 ms, a cobranca seguinte entra quase
+// na hora e a faixa era apagada antes de alguem conseguir ler. A frase e
+// conteudo, nao enfeite — quem desligou animacao tambem precisa dela.
+var TEMPO_MINIMO_FAIXA = 1600;
+var faixaDesde = 0;
+
+function mostrarFaixa(tipo, texto, duracao) {
+  var faixa = document.getElementById('faixa-celebracao');
+  var alvo = document.getElementById('faixa-celebracao-texto');
+  if (!faixa || !alvo) return;
+  faixa.classList.remove('saindo');
+  faixa.setAttribute('data-tipo', tipo);
+  alvo.textContent = texto;
+  faixa.hidden = false;
+  faixaDesde = Date.now();
+  if (duracao > 0) agendarNaSessao(function() { esconderFaixa(); }, duracao);
+}
+
+// Chamada quando a pergunta seguinte entra. Se a faixa acabou de subir,
+// adia a limpeza ate completar o tempo minimo de leitura.
+function limparFaixaDaCobrancaAnterior() {
+  var faixa = document.getElementById('faixa-celebracao');
+  if (!faixa || faixa.hidden) return;
+  var naTela = Date.now() - faixaDesde;
+  if (naTela >= TEMPO_MINIMO_FAIXA) { esconderFaixa(); return; }
+  agendarNaSessao(function() { esconderFaixa(); }, TEMPO_MINIMO_FAIXA - naTela);
+}
+
+function esconderFaixa() {
+  var faixa = document.getElementById('faixa-celebracao');
+  if (!faixa || faixa.hidden) return;
+  faixa.classList.add('saindo');
+  // Espera a animacao de saida; se o navegador estiver com movimento
+  // reduzido ela nao roda, mas o timeout fecha do mesmo jeito.
+  agendarNaSessao(function() {
+    faixa.hidden = true;
+    faixa.classList.remove('saindo');
+  }, 260);
+}
+
+// Pede a cena 3D a reacao de torcida + pose do batedor. A cena 2D nao
+// tem reagir(): neste caso so a faixa aparece, e esta tudo certo.
+function reagirNaCena(tipo) {
+  var jogo = estado.jogoPenalti;
+  if (jogo && typeof jogo.reagir === 'function') jogo.reagir(tipo);
+}
 
 // Mensagens do chute que nao entrou, por motivo (regras-chute.js).
 var MENSAGEM_FORA = {
@@ -220,9 +317,14 @@ function desenharFaixaIdealForca(tipoId) {
   faixa.style.width = (fim - ini) + '%';
 }
 
-// URL SEMPRE com pixel-art, nunca outro estilo. Seed muda = rosto muda.
+// Os avatares sao arquivos NOSSOS, servidos junto com o jogo. Antes vinham
+// da api.dicebear.com: isso custava uma requisicao a um dominio de terceiro
+// no navegador da crianca (apontamento SEC-05 de LGPD), levava mais de 6
+// segundos para desenhar numa conexao boa e, pior, sorteava um rosto humano
+// qualquer — o avatar chamado "Tigre" nunca foi um tigre. O nome do arquivo
+// e a MESMA seed de antes, entao os perfis ja salvos continuam valendo.
 function gerarUrlAvatar(seed) {
-  return 'https://api.dicebear.com/9.x/pixel-art/svg?seed=' + encodeURIComponent(seed);
+  return '../Imagens/avatares/' + encodeURIComponent(seed) + '.svg';
 }
 
 function gerarAvatarFallbackLocal(seed) {
@@ -297,10 +399,14 @@ function encerrarJogoEmAndamento() {
   }
   var camada = document.getElementById('camada-mira');
   if (camada) camada.hidden = true;
-  ['bloco-forca', 'bloco-altura', 'mensagem-etapa', 'incentivo-jogo'].forEach(function(id) {
+  ['bloco-forca', 'bloco-altura', 'mensagem-etapa', 'incentivo-jogo', 'faixa-celebracao'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.hidden = true;
   });
+  // A festa roda em requestAnimationFrame proprio: sem isto ela
+  // continuaria desenhando depois de sair da partida (mesma familia dos
+  // defeitos DEF-01/DEF-02 da Sprint 3).
+  if (typeof Festa !== 'undefined') Festa.parar();
   var tela = document.getElementById('tela-fase1');
   if (tela) tela.classList.remove('foco-campo');
 }
@@ -599,16 +705,27 @@ var BANDEIRAS_POR_ID = {
   colombia:'co', mexico:'mx', coreia:'kr'
 };
 
-// Escudo generico do clube: duas cores do time + sigla. NAO e o escudo
-// oficial (marca registrada); so ajuda a crianca a reconhecer o time.
+// Escudo PROPRIO do clube: cores e padrao da camisa + sigla. NAO e o
+// escudo oficial — esse e marca registrada do clube e o jogo esta
+// publicado na web. Cores e listras nao sao protegidas, e sao elas que
+// a crianca usa pra reconhecer o time de longe.
+// O desenho de cada padrao mora no CSS (.escudo-clube[data-padrao=...]).
 function criarEscudoClube(time, classeExtra) {
   var escudo = document.createElement('span');
   escudo.className = 'escudo-clube' + (classeExtra ? ' ' + classeExtra : '');
   escudo.setAttribute('aria-hidden', 'true');
   var c1 = COR_VALIDA.test(time.corPrimaria || '') ? time.corPrimaria : '#21303B';
   var c2 = COR_VALIDA.test(time.corSecundaria || '') ? time.corSecundaria : '#FFFDF6';
+  // Tricolor sem a 3a cor cai no bicolor em vez de sumir com uma faixa.
+  var c3 = COR_VALIDA.test(time.corTerciaria || '') ? time.corTerciaria : c2;
   escudo.style.setProperty('--cor-1', c1);
   escudo.style.setProperty('--cor-2', c2);
+  escudo.style.setProperty('--cor-3', c3);
+  // Padrao desconhecido (ou lista remota antiga, sem o campo) vira 'liso'.
+  escudo.setAttribute('data-padrao', padraoDoEscudo(time.padrao));
+  // Camisa clara precisa de aro escuro pra nao sumir no fundo da Loja.
+  if (corEhClara(c1)) escudo.setAttribute('data-claro', '1');
+
   var sigla = document.createElement('span');
   sigla.className = 'escudo-sigla';
   sigla.textContent = (time.sigla || time.nome.slice(0, 3)).toUpperCase();
@@ -616,6 +733,13 @@ function criarEscudoClube(time, classeExtra) {
   sigla.style.color = corEhClara(c1) ? '#111111' : '#FFFFFF';
   escudo.appendChild(sigla);
   return escudo;
+}
+
+function padraoDoEscudo(valor) {
+  var conhecidos = (typeof PADROES_ESCUDO !== 'undefined')
+    ? PADROES_ESCUDO
+    : ['liso', 'vertical', 'horizontal', 'diagonal', 'faixa-h', 'tricolor-v', 'tricolor-h'];
+  return conhecidos.indexOf(valor) === -1 ? 'liso' : valor;
 }
 
 function corEhClara(hex) {
@@ -996,6 +1120,10 @@ function carregarProximaPergunta() {
   var nivelDaVez = Progressao.dificuldadeEfetiva(nivelBase, estado.faseAtual);
   estado.perguntaAtual = BancoQuestoes.sortearPergunta(nivelDaVez, Sala.filtrosDaSala());
   document.getElementById('mensagem-feedback').textContent = '';
+  // A faixa da cobranca anterior sai, mas so depois de ter ficado tempo
+  // suficiente na tela para ser lida (ver TEMPO_MINIMO_FAIXA).
+  limparFaixaDaCobrancaAnterior();
+  if (typeof Festa !== 'undefined') Festa.parar();
   document.getElementById('pergunta-texto').textContent = estado.perguntaAtual.texto;
   mostrarEtapaRespostas();
 
@@ -1016,7 +1144,7 @@ function carregarProximaPergunta() {
 
   estado.etapa = ETAPA.RESPOSTA;
   atualizarBolinhasProgresso();
-  Narracao.falar(estado.perguntaAtual.textoFalado);
+  Narracao.falar(estado.perguntaAtual.textoFalado, { tom: 'pergunta' });
   iniciarTimer();
 }
 
@@ -1027,7 +1155,7 @@ function initFase1() {
       // Pedido explicito da crianca: fala mesmo com a narracao automatica
       // desligada (antes o botao nao fazia nada nesse caso).
       SFX.clique();
-      if (estado.perguntaAtual) Narracao.falar(estado.perguntaAtual.textoFalado, { forcar: true });
+      if (estado.perguntaAtual) Narracao.falar(estado.perguntaAtual.textoFalado, { forcar: true, tom: 'pergunta' });
     });
   }
   desenharFaixaIdealForca('meia');
@@ -1052,6 +1180,11 @@ function responderAlternativa(botaoClicado) {
     estado.etapa = ETAPA.TRANSICAO;
     SFX.selecionar();
     document.getElementById('mensagem-feedback').textContent = '✓ Resposta correta!';
+    // ETAPA 1: grito curto da torcida + batedor em pose confiante,
+    // enquanto a faixa confirma a conta. A pausa antes da mira subiu de
+    // 300 para 900 ms: com 300 a crianca nem via que tinha acertado.
+    reagirNaCena('acerto');
+    mostrarFaixa('acerto', sortear(FRASES_ACERTO_CONTA), PAUSA_ANTES_DA_MIRA - 120);
     agendarNaSessao(function() { avancarParaMira(tempoUsadoMs); }, PAUSA_ANTES_DA_MIRA);
     return;
   }
@@ -1335,13 +1468,22 @@ function finalizarCobranca(detalhes) {
     feedback.textContent = 'GOOOL! +' + pontosGanhos + ' ';
     feedback.appendChild(criarIconeCruzeiro(''));
     feedback.appendChild(document.createTextNode('Cruzeiros!'));
-    Narracao.falar('Gol!');
+    Narracao.falar('Gol!', { tom: 'gol' });
+    // ETAPA 2 — gol: torcida a loucura, batedor pula e soca o ar,
+    // fogos e confete na tela, faixa verde por cima de tudo.
+    reagirNaCena('gol');
+    if (typeof Festa !== 'undefined') Festa.iniciar('gol');
+    mostrarFaixa('gol', sortear(FRASES_GOL), 2600);
   } else if (resultado === 'fora') {
     // Reaproveita o som existente de "sem gol" — nao criar SFX novo.
     SFX.defesa();
     var motivo = MENSAGEM_FORA[detalhes.motivo] ? detalhes.motivo : 'lado';
     feedback.textContent = MENSAGEM_FORA[motivo];
-    Narracao.falar(NARRACAO_FORA[motivo]);
+    Narracao.falar(NARRACAO_FORA[motivo], { tom: 'quase' });
+    // ETAPA 2 — a conta estava certa e o chute saiu: lamento leve, e a
+    // faixa diz em primeiro lugar que a MATEMATICA estava certa.
+    reagirNaCena('erro');
+    mostrarFaixa('quase', sortear(FRASES_QUASE), 3200);
   } else {
     SFX.defesa();
     var frase = FRASES_INCENTIVO[Math.floor(Math.random() * FRASES_INCENTIVO.length)];
@@ -1351,7 +1493,20 @@ function finalizarCobranca(detalhes) {
     incentivo.textContent = frase;
     incentivo.hidden = false;
     incentivo.classList.remove('animar'); void incentivo.offsetWidth; incentivo.classList.add('animar');
-    Narracao.falar(detalhes.estourouTempo ? 'Tempo esgotado! O goleiro defendeu.' : 'O goleiro defendeu!');
+    Narracao.falar(detalhes.estourouTempo ? 'Tempo esgotado! O goleiro defendeu.' : 'O goleiro defendeu!',
+      { tom: 'defesa' });
+    reagirNaCena('erro');
+    // Defesa cai em dois casos bem diferentes: a crianca acertou a conta
+    // e o goleiro pegou, ou ela errou a conta (e ai o chute nem era dela).
+    // A frase tem que distinguir — dizer "sua conta estava certinha" para
+    // quem errou a conta seria mentira, e a crianca percebe.
+    if (detalhes.respostaCorreta) {
+      mostrarFaixa('quase', sortear(FRASES_QUASE), 3200);
+    } else {
+      mostrarFaixa('conta', detalhes.estourouTempo
+        ? 'O tempo acabou dessa vez. Na próxima você responde antes!'
+        : sortear(FRASES_CONTA), 3000);
+    }
   }
 
   estado.resultadosCobrancas.push({
@@ -1427,12 +1582,38 @@ function codigoCobranca(c) {
   return c.estourouTempo ? 'T' : 'D';
 }
 
+// A escada de niveis.js tem 12 degraus, mas o esquema 2 do resumo — e as
+// regras do Firestore, e backup-validacao.js — so conhecem 'facil', 'medio'
+// e 'dificil'. Gravar o numero direto faria a regra RECUSAR a escrita e o
+// progresso sumiria em silencio (so um console.warn).
+//
+// Entao o resumo salvo continua no vocabulario antigo. Se um dia o time
+// quiser guardar o nivel exato no historico, e subir o esquema pra 3 e
+// ajustar junto: Config/firestore.rules, JS/backup-validacao.js e
+// tests/rules/.
+function dificuldadeDoNivel(nivel) {
+  if (typeof nivel !== 'number') return nivel; // ja e 'facil'/'medio'/'dificil'
+  if (nivel <= 3) return 'facil';
+  if (nivel <= 7) return 'medio';
+  return 'dificil';
+}
+
 function montarResumoPartida() {
   var tempoTotal = estado.resultadosCobrancas.reduce(function(s, c) { return s + (c.tempoUsado || 0); }, 0);
+  // Nivel efetivo da fase (nivel de partida + um degrau por fase), que e o
+  // que a crianca realmente jogou — nao o que ela escolheu no menu.
+  var nivelJogado = obterNivel(
+    Progressao.dificuldadeEfetiva(
+      Sala.estaNaSala() && Sala.nivelDaSala() ? Sala.nivelDaSala() : estado.dificuldadeId,
+      estado.faseAtual
+    )
+  ).id;
+
   return {
-    versaoEsquema: 2,
+    versaoEsquema: 3,
     faseId: estado.faseAtual,
-    dificuldadeId: estado.dificuldadeId,
+    nivelId: nivelJogado,
+    dificuldadeId: dificuldadeDoNivel(nivelJogado),
     selecaoId: estado.selecaoId,
     gols: estado.gols,
     totalCobrancas: TOTAL_COBRANCAS,
@@ -1468,7 +1649,8 @@ function irParaResultado() {
       avatarSeed: estado.avatarSeed,
       gols: estado.gols,
       pontuacao: estado.pontuacao,
-      fase: fase.id
+      fase: fase.id,
+      nivelId: resumo.nivelId
     });
   }
   atualizarGanhoCarteira();
@@ -1505,7 +1687,7 @@ function irParaResultado() {
     window.FirebaseMathGol.salvarProgresso(resumo);
   }
 
-  Narracao.falar(mensagem);
+  Narracao.falar(mensagem, { tom: 'resultado' });
   mostrarTela('tela-resultado');
 }
 
@@ -1583,7 +1765,22 @@ var Modal = (function() {
     atual.sobreposicao.setAttribute('aria-hidden', 'true');
     fundo().forEach(function(el) { el.removeAttribute('inert'); el.removeAttribute('aria-hidden'); });
     if (atual.aoFechar) atual.aoFechar();
-    if (atual.origem && typeof atual.origem.focus === 'function') atual.origem.focus();
+    devolverFoco(atual.origem);
+  }
+
+  // Modal aberto de DENTRO de outro (ex.: Creditos a partir de "Mais
+  // opcoes"): quando este fecha, o botao que o abriu ja esta escondido
+  // junto com o modal de fora. Focar um elemento invisivel joga o foco no
+  // <body> e o teclado volta pro topo do documento. Nesse caso devolvemos
+  // pro "Mais opcoes", que e o elemento visivel mais proximo da origem.
+  function visivel(el) {
+    return !!el && typeof el.focus === 'function' && !el.hidden && el.offsetParent !== null;
+  }
+
+  function devolverFoco(origem) {
+    if (visivel(origem)) { origem.focus(); return; }
+    var alternativa = document.getElementById('botao-mais-opcoes');
+    if (visivel(alternativa)) alternativa.focus();
   }
 
   document.addEventListener('keydown', function(ev) {
@@ -1912,7 +2109,61 @@ function initBackup() {
   }
 }
 
+// ---------- Mais opcoes ----------
+//
+// O menu tinha 6 botoes empilhados competindo com o "Jogar". Os quatro que
+// nao sao do dia a dia da crianca moram aqui agora. Fechar o modal antes de
+// trocar de tela e obrigatorio: senao a sobreposicao fica por cima da tela
+// nova e come os cliques.
+// Usa o mesmo Modal dos outros (Acessibilidade, Creditos, Backup): foco
+// entra no titulo, Tab fica preso dentro, Escape fecha e o fundo vira inert.
+// A primeira versao deste modal tinha logica propria e por isso nao punha o
+// fundo em inert nem prendia o Tab — o leitor de tela passeava pela tela
+// atras da sobreposicao (DEF-A11Y-01).
+function fecharMaisOpcoes() {
+  var m = document.getElementById('sobreposicao-mais');
+  if (!m) return;
+  if (m.classList.contains('aberta')) { Modal.fechar(); return; }
+  m.classList.remove('aberta');
+  m.setAttribute('aria-hidden', 'true');
+}
+
+function initMaisOpcoes() {
+  var abrir = document.getElementById('botao-mais-opcoes');
+  var fechar = document.getElementById('botao-fechar-mais');
+  var modal = document.getElementById('sobreposicao-mais');
+  if (!abrir || !modal) return;
+
+  abrir.addEventListener('click', function() {
+    SFX.clique();
+    Modal.abrir(modal, abrir);
+  });
+  if (fechar) fechar.addEventListener('click', function() { SFX.clique(); Modal.fechar(); });
+  Modal.ligarFundo(modal);
+
+  // Entrar na sala e Sou professor TROCAM DE TELA: a sobreposicao tem que
+  // sair da frente antes, senao fica por cima da tela nova e come os cliques.
+  // Creditos e Backup abrem outro modal — Modal.abrir ja fecha este sozinho,
+  // e o foco volta pro "Mais opcoes" quando o de cima fechar.
+  ['botao-entrar-sala', 'botao-professor'].forEach(function(id) {
+    var b = document.getElementById(id);
+    if (b) b.addEventListener('click', fecharMaisOpcoes);
+  });
+}
+
 // ---------- HU-14: Sala (lado da crianca) ----------
+
+// A sala e a unica tela que NAO funciona offline. Quando a nuvem esta fora,
+// diz o motivo em vez de um "nao consegui" generico — na maioria das vezes e
+// o provedor Anonimo desligado no Console do Firebase.
+function motivoNuvemFora() {
+  if (!window.FirebaseMathGol) return 'O servidor ainda esta carregando. Tente de novo em instantes.';
+  if (window.FirebaseMathGol.nuvemIndisponivel && window.FirebaseMathGol.nuvemIndisponivel()) {
+    return 'O login na nuvem esta desligado neste projeto do Firebase, entao a sala nao funciona. Avise a equipe.';
+  }
+  return 'Sem conexao com o servidor. Tente de novo em instantes.';
+}
+
 
 function atualizarFaixaSala() {
   var faixa = document.getElementById('faixa-sala');
@@ -1973,7 +2224,7 @@ function initEntrarSala() {
     }).then(function(r) {
       if (!r.ok) {
         avisar(r.motivo === 'offline'
-          ? 'Sem conexão com o servidor. Tente de novo em instantes.'
+          ? motivoNuvemFora()
           : 'Sala não encontrada. Confira as letras.', 'erro');
         return;
       }
@@ -2037,7 +2288,22 @@ function renderizarAlunos(lista) {
     img.loading = 'lazy';
     li.appendChild(img);
 
-    li.appendChild(criarSpan('aluno-nome', al.apelido || 'Craque'));
+    // Nome em cima, fase + nivel embaixo: o professor precisa saber ONDE a
+    // crianca esta, nao so quantos gols fez.
+    var info = document.createElement('span');
+    info.className = 'aluno-info';
+    info.appendChild(criarSpan('aluno-nome', al.apelido || 'Craque'));
+
+    var faseObj = al.fase ? Progressao.obterFase(al.fase) : null;
+    var partes = [];
+    if (faseObj) partes.push(faseObj.icone + ' ' + faseObj.nome);
+    if (al.nivelId) {
+      var nv = obterNivel(al.nivelId);
+      partes.push('Nível ' + nv.id + ' · ' + nv.nome);
+    }
+    info.appendChild(criarSpan('aluno-contexto', partes.length ? partes.join(' · ') : 'ainda não jogou'));
+    li.appendChild(info);
+
     li.appendChild(criarSpan('aluno-placar', (al.gols || 0) + ' ⚽'));
     li.appendChild(criarSpan('aluno-pontos', String(al.pontuacao || 0)));
     ul.appendChild(li);
@@ -2107,7 +2373,7 @@ function initProfessor() {
 
   criar.addEventListener('click', function() {
     SFX.selecionar();
-    if (!window.FirebaseMathGol) { avisar('Sem conexão com o servidor.', 'erro'); return; }
+    if (!window.FirebaseMathGol) { avisar(motivoNuvemFora(), 'erro'); return; }
 
     avisar('Criando a sala...');
     Sala.criar({
@@ -2115,7 +2381,7 @@ function initProfessor() {
       nivel: parseInt(document.getElementById('select-nivel-sala').value, 10) || 1,
       tipos: tiposMarcados()
     }).then(function(sala) {
-      if (!sala) { avisar('Não consegui criar a sala. Tente de novo.', 'erro'); return; }
+      if (!sala) { avisar(motivoNuvemFora(), 'erro'); return; }
       avisar('');
       mostrarPainelDaSala(sala);
     });
@@ -2126,6 +2392,23 @@ function initProfessor() {
     Sala.pararDeObservar(); // listener do Firestore nao pode ficar aberto
     mostrarTela('tela-menu');
   });
+}
+
+
+// ---------- Endereco direto (#professor e #entrar) ----------
+// Os dois PACKs entregues ao portal anunciam math-gol.vercel.app/#professor
+// como "link exclusivo para professores". Sem isto o endereco cai no menu
+// comum e o professor nao encontra a sala. Fecha o modal "Mais opcoes" antes
+// de trocar de tela: a sobreposicao aberta fica por cima da tela nova e come
+// os cliques (mesmo motivo comentado em fecharMaisOpcoes).
+var TELAS_POR_HASH = { professor: 'tela-professor', entrar: 'tela-entrar-sala' };
+
+function abrirPeloEndereco() {
+  var chave = (location.hash || '').replace('#', '').toLowerCase();
+  var tela = TELAS_POR_HASH[chave];
+  if (!tela) return;
+  fecharMaisOpcoes();
+  mostrarTela(tela);
 }
 
 // ---------- Init ----------
@@ -2150,9 +2433,14 @@ document.addEventListener('DOMContentLoaded', function() {
   if (typeof initTutorial === 'function') initTutorial();
   initCreditos();
   initBackup();
+  initMaisOpcoes();
   initEntrarSala();
   initProfessor();
   mostrarTela('tela-menu', { focar: false });
+
+  // Depois do menu, para que o endereco direto mande na tela inicial.
+  abrirPeloEndereco();
+  window.addEventListener('hashchange', abrirPeloEndereco);
 
 });
 

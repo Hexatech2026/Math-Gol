@@ -1,0 +1,214 @@
+PATCH — Torcida viva, comemoração em 2 etapas, escudos, voz,
+endereço direto do professor e avatares próprios
+MathGol · HexaTech · revisão de 19/10/2026
+
+Este patch RESPONDE AO RETORNO DO PROFESSOR na Sprint 4 e substitui os
+dois patches anteriores (escudos / escudos+voz). Não aplique os antigos.
+
+ARQUIVOS (11)
+  HTML/index.html                  canvas da festa + faixa de celebração
+  CSS/styles.css                   faixa, festa, escudos dos clubes
+  JS/game.js                       torcida viva + poses do batedor
+  JS/festa.js                      ARQUIVO NOVO — confete e fogos
+  JS/main.js                       as duas etapas da jogada + frases
+                                   + endereço direto #professor e #entrar
+  JS/narration.js                  vozes e tons da narração
+  JS/data.js                       padrão da camisa de cada clube
+  JS/avatar-data.js                avatares locais, sem DiceBear
+  Imagens/avatares/*.svg           18 ARQUIVOS NOVOS — os desenhos
+  JS/loja.js, JS/tutorial.js       tons da narração
+  Docs/laboratorio-de-voz.html     ARQUIVO NOVO — ajuste manual da voz
+  tests/e2e/modo-simplificado-e-timer.spec.js   espera por estado
+
+===================================================================
+NOVO NESTA REVISÃO (19/10) — AVATARES PRÓPRIOS, SEM DICEBEAR
+===================================================================
+
+Os rostos vinham de api.dicebear.com. Saiu por três motivos, e o
+terceiro é o que ninguém tinha percebido:
+
+  1. Era uma requisição a um domínio de terceiro feita pelo
+     navegador DA CRIANÇA — o apontamento SEC-05 de LGPD do
+     relatório da Sprint 3.
+  2. Media mais de 6 segundos para desenhar numa conexão boa
+     (medido em 19/10 no ambiente de teste). Numa rede de
+     laboratório de escola tende a ser pior. É também o cartão
+     R02 do quadro: "jogo não abre se a CDN travar".
+  3. A biblioteca sorteava um ROSTO HUMANO a partir da seed.
+     O avatar chamado "Tigre" nunca foi um tigre. "Leão" nunca
+     foi um leão. "Coruja", "Raposa", "Fênix", "Astronauta",
+     "Pirata", "Dinossauro" — nenhum era o que o nome dizia.
+
+Agora são 18 desenhos originais da equipe, em SVG, servidos junto
+com o jogo em Imagens/avatares/. Cada um é o que o nome diz.
+
+O NOME DO ARQUIVO É A MESMA SEED DE ANTES. Isso é de propósito: a
+seed é o que está gravado nos perfis salvos, no localStorage e no
+Firestore. Quem já escolheu um avatar continua com ele.
+
+Mudou só uma linha de lógica, em gerarUrlAvatar() no main.js. A
+loja e o painel do professor usam essa mesma função, então pegaram
+a mudança de graça. O gerarAvatarFallbackLocal() continua lá, como
+rede de segurança caso algum arquivo falte.
+
+Peso total dos 18 arquivos: 76 KB.
+
+===================================================================
+NOVO NESTA REVISÃO (19/10) — ENDEREÇO DIRETO
+===================================================================
+
+Os dois PACKs entregues ao portal Cruzeiro Hub anunciam
+
+    https://math-gol.vercel.app/#professor
+
+como "link exclusivo para professores", e
+
+    https://math-gol.vercel.app/#entrar
+
+como atalho da criança. Até agora esses endereços caíam no menu
+comum: o jogo ignorava o trecho depois do #.
+
+Foi acrescentado ao main.js um mapa TELAS_POR_HASH e a função
+abrirPeloEndereco(), chamada depois de mostrarTela('tela-menu') no
+DOMContentLoaded e também no evento hashchange — para funcionar
+quando o endereço muda com a página já aberta.
+
+A função fecha o modal "Mais opções" antes de trocar de tela. Sem
+isso a sobreposição aberta fica por cima da tela nova e come os
+cliques (mesmo motivo comentado em fecharMaisOpcoes).
+
+CONFERIDO EM PRODUÇÃO (19/10, math-gol.vercel.app):
+  - login anônimo do Firebase voltou a funcionar (UID anônimo ok);
+  - as regras do Firestore aceitam o usuário anônimo na leitura;
+  - a produção AINDA roda a build antiga: não há festa.js lá e o
+    #professor cai no menu. Por isso este patch precisa subir antes
+    de os PACKs serem enviados.
+
+===================================================================
+RETORNO DO PROFESSOR → O QUE FOI FEITO
+===================================================================
+
+1. "Substituir a voz mecânica por uma voz mais parecida com a de um
+    locutor."
+    → narration.js tinha um defeito silencioso: pegava a PRIMEIRA voz
+      pt- que o navegador listasse, que no Windows costuma ser a Daniel
+      ou a Maria (locais, antigas, robóticas). Agora há um ranking que
+      procura primeiro Francisca, Thalita, Brenda, Google pt-BR e
+      Luciana — as naturais.
+    → Além disso, tudo era falado no mesmo rate/pitch. Agora há 8 tons
+      (tabela TONS em narration.js). O gol sai rápido e agudo, a conta
+      sai devagar e clara, a defesa sai mais grave e acolhedora.
+    → Para afinar: abra Docs/laboratorio-de-voz.html, arraste os
+      controles ouvindo as frases reais e cole o código gerado.
+
+2. "Quando a criança fizer um Gol, vocês devem fazer uma comemoração."
+    → Ver "AS DUAS ETAPAS", abaixo.
+
+3. "Aparece um feedback, mas sem destaque. Precisei prestar muita
+    atenção para ver."
+    → Era o ponto mais importante. A .mensagem-feedback de antes era uma
+      pílula pequena embaixo do campo. Agora existe uma FAIXA grande
+      sobre o gramado, com cor por situação e texto de 1,05 a 1,7 rem.
+      A pílula antiga continua lá (é dela que os testes leem o texto),
+      mas quem fala com a criança é a faixa.
+    → A pausa entre acertar a conta e ir para a mira subiu de 300 para
+      900 ms: com 300 ms não dava tempo de ver nada.
+
+4. "Os personagens poderiam ser mais bonitos."
+    → Parcialmente. O batedor ganhou quatro poses (ver abaixo) e a
+      arquibancada deixou de ser um bloco parado. Os ROSTOS dos avatares
+      não foram tocados nesta rodada — ver "PENDENTE", no fim.
+
+===================================================================
+AS DUAS ETAPAS DA JOGADA
+===================================================================
+
+ETAPA 1 — a criança acerta a conta (antes do chute)
+  · torcida dá um grito curto (intensidade 0,5) e parte levanta o braço
+  · batedor entra em pose confiante: peito estufado, mãos na cintura,
+    com uma respiração leve enquanto espera
+  · faixa verde curta no alto: "Conta certa! Agora é o chute!"
+  · narração no tom 'pergunta'
+
+ETAPA 2A — gol
+  · torcida vai à loucura (intensidade 1,0): pulo alto, maioria de
+    braços levantados, camisas clareando
+  · batedor pula duas vezes e soca o ar
+  · fogos de artifício (6 estouros espalhados) e confete caindo
+  · faixa verde grande, sorteada entre 5 frases:
+    "GOLAÇO! Você é um craque da matemática!" etc.
+  · narração no tom 'gol'
+
+ETAPA 2B — acertou a conta, perdeu o gol
+  · torcida faz o "uhh": afunda, braços abaixados
+  · batedor leva as mãos à cabeça e afunda os ombros
+  · SEM fogos e SEM confete
+  · faixa AZUL (nunca vermelha), sorteada entre 4 frases que começam
+    pela matemática: "Quase lá! Sua conta estava certinha, você é muito
+    inteligente. Tente o chute de novo, você consegue!"
+  · narração no tom 'quase' ou 'defesa'
+
+ETAPA 2C — errou a conta (caso que o pedido não cobria, mas existe)
+  · faixa ÂMBAR, frases próprias: "Não foi dessa vez! Vamos tentar a
+    próxima conta juntos?"
+  · dizer "sua conta estava certinha" aqui seria mentira, e criança
+    percebe. Por isso são três conjuntos de frase, não dois.
+
+===================================================================
+DETALHES QUE VALE CONHECER ANTES DE MEXER
+===================================================================
+
+TORCIDA — antes, uma linha no loop de render subia e descia a
+arquibancada INTEIRA junto. 144 pessoas no mesmo compasso leem como um
+bloco parado. Agora cada torcedor tem fase, amplitude e ritmo próprios,
+e três coisas variam com uma única intensidade (0 a 1): altura do pulo,
+quantos levantam o braço e o brilho da camisa.
+A cadência de redesenho é adaptativa: 10 fps em repouso, 24 fps durante
+as reações. A torcida são 144 pessoas × 3 malhas, e redesenhar tudo a
+60 fps roubava quadro do goleiro e da bola — que são medidos pelos
+testes de animação.
+
+FAIXA — fica no rodapé do campo, não no centro. No centro ela cobria
+justamente o batedor comemorando, que é o ponto da cena.
+Tem tempo mínimo de 1,6 s na tela (TEMPO_MINIMO_FAIXA, main.js). Isso
+existe por causa do movimento reduzido: ali as animações duram 1 ms, a
+cobrança seguinte entra quase na hora e a faixa sumia antes de alguém
+ler. A frase é conteúdo, não enfeite.
+
+MOVIMENTO REDUZIDO — confete e fogos não aparecem, a torcida fica
+parada, o batedor assume a pose sem transição. A FAIXA e o TEXTO
+continuam iguais.
+
+ALTO CONTRASTE — a faixa vira preta com contorno branco grosso.
+
+SAIR NO MEIO — Festa.parar() entra em encerrarJogoEmAndamento() e em
+carregarProximaPergunta(). O confete roda em requestAnimationFrame
+próprio; sem isso continuaria desenhando depois de trocar de tela
+(mesma família dos defeitos DEF-01/DEF-02 da Sprint 3).
+
+CENA 2D — game-2d.js não tem reagir(). O main.js checa antes de chamar:
+no modo simplificado a faixa e as frases funcionam normalmente, só não
+há torcida nem pose.
+
+===================================================================
+TESTE QUE PRECISOU MUDAR
+===================================================================
+
+modo-simplificado-e-timer.spec.js esperava 700 ms fixos e então exigia
+etapa === 'mira'. Com a pausa da etapa 1 em 900 ms isso passou a falhar.
+Troquei por A.esperarEtapa(page, 'mira'), que é o que o resto da suíte
+já fazia: o teste passa a medir o ESTADO e não o relógio.
+
+  npm run test:unit   37/37 passando
+  npm run test:e2e    69/69 passando
+
+===================================================================
+PENDENTE — não entrou nesta rodada
+===================================================================
+
+Os ROSTOS dos avatares. Hoje vêm do DiceBear (api.dicebear.com), por
+rede. No laboratório, sem internet ou com a CDN bloqueada, cai no
+círculo colorido com uma letra — que é provavelmente o que o professor
+viu quando falou em "mais bonitos". Hospedar os rostos no próprio
+repositório resolve isso E o ponto SEC-05 de LGPD da Sprint 3 (o
+aparelho da criança hoje manda IP e User-Agent para a api.dicebear.com).

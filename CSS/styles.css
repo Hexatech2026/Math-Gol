@@ -2623,16 +2623,77 @@ body.alto-contraste .preenchimento-altura { background: var(--grafite); }
   background: linear-gradient(90deg, var(--cor-1) 0 50%, var(--cor-2) 50% 100%);
   box-shadow: inset 0 0 0 2px rgba(0,0,0,0.25);
 }
+
+/* ---------- Padrao da camisa dentro do escudo proprio ----------
+   O escudo e nosso; o que identifica o time aqui sao as CORES e as
+   LISTRAS da camisa, que nao sao marca registrada. O escudo oficial de
+   cada clube e, e por isso nao entra no jogo.
+   data-padrao vem de SELECOES (JS/data.js) e so aceita os sete valores
+   de PADROES_ESCUDO. --cor-3 existe so nos tricolores.                */
+
+.escudo-clube[data-padrao="liso"]::before {
+  background: var(--cor-1);
+  box-shadow: inset 0 0 0 3px var(--cor-2), inset 0 0 0 5px rgba(0,0,0,0.25);
+}
+.escudo-clube[data-padrao="vertical"]::before {
+  background: repeating-linear-gradient(90deg,
+    var(--cor-1) 0 18%, var(--cor-2) 18% 36%);
+}
+.escudo-clube[data-padrao="horizontal"]::before {
+  background: repeating-linear-gradient(180deg,
+    var(--cor-1) 0 13%, var(--cor-2) 13% 26%);
+}
+/* Faixa atravessada (Vasco): a camisa e CLARA com a faixa escura, entao
+   aqui a base e a cor-2 e a faixa e a cor-1 — ao contrario dos demais.
+   Inverter no CSS em vez de nos dados mantem a camisa 3D como esta. */
+.escudo-clube[data-padrao="diagonal"]::before {
+  background: linear-gradient(118deg,
+    var(--cor-2) 0 34%, var(--cor-1) 34% 60%, var(--cor-2) 60% 100%);
+}
+.escudo-clube[data-padrao="faixa-h"]::before {
+  background: linear-gradient(180deg,
+    var(--cor-1) 0 46%, var(--cor-2) 46% 72%, var(--cor-1) 72% 100%);
+}
+.escudo-clube[data-padrao="tricolor-v"]::before {
+  background: repeating-linear-gradient(90deg,
+    var(--cor-1) 0 12%, var(--cor-2) 12% 24%, var(--cor-3) 24% 36%);
+}
+.escudo-clube[data-padrao="tricolor-h"]::before {
+  background: linear-gradient(180deg,
+    var(--cor-1) 0 40%, var(--cor-2) 40% 68%, var(--cor-3) 68% 100%);
+}
+
+/* Camisa muito clara (Corinthians, Santos, Bragantino, Sao Paulo) perde o
+   contorno no fundo claro da loja: um aro escuro resolve sem mudar a cor. */
+.escudo-clube[data-claro="1"]::before {
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,0.45);
+}
+.escudo-clube[data-claro="1"][data-padrao="liso"]::before {
+  box-shadow: inset 0 0 0 3px var(--cor-2), inset 0 0 0 5px rgba(0,0,0,0.35);
+}
+
+/* Alto contraste: o padrao vira contorno grosso, como no resto do jogo. */
+body.alto-contraste .escudo-clube::before {
+  background: #FFFFFF;
+  box-shadow: inset 0 0 0 3px #000000;
+}
+body.alto-contraste .escudo-sigla {
+  background: #FFFFFF;
+  color: #000000 !important;
+  outline: 2px solid #000000;
+}
 .escudo-sigla {
   position: relative;
-  margin-top: -10px;
-  padding: 1px 4px;
+  /* Sobe e encolhe: a placa da sigla cobria o meio do escudo e escondia
+     justamente a faixa que identifica o time (Bahia, Remo, Bragantino). */
+  margin-top: -16px;
+  padding: 0 3px;
   border-radius: 4px;
   background: var(--cor-1);
   font-family: var(--fonte-titulo);
   font-weight: 700;
-  font-size: 0.82rem;
-  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
   outline: 2px solid rgba(255,255,255,0.65);
 }
 .subtitulo-clubes { margin-top: 20px; }
@@ -3279,3 +3340,165 @@ body.alto-contraste .chip-tipo,
 body.alto-contraste .campo-sala,
 body.alto-contraste .campo-codigo-sala,
 body.alto-contraste .item-aluno { border-width: 3px; }
+
+/* Linha do aluno no painel: nome em cima, fase e nível embaixo */
+.item-aluno { grid-template-columns: 34px 1fr auto auto; }
+.aluno-info { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; }
+.aluno-contexto {
+  font-size: 0.68rem;
+  color: var(--grafite-suave);
+  line-height: 1.2;
+  text-align: left;
+}
+body.alto-contraste .aluno-contexto { color: var(--grafite); }
+
+/* ---------- Menu enxuto: link discreto + modal "Mais opções" ---------- */
+
+.link-mais-opcoes {
+  margin-top: 18px;
+  background: none;
+  border: none;
+  color: var(--branco-giz);
+  opacity: 0.75;
+  font-family: var(--fonte-titulo);
+  font-size: 0.82rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  padding: 6px 10px;
+}
+.link-mais-opcoes:hover { opacity: 1; }
+.link-mais-opcoes:focus-visible { outline: 3px solid var(--amarelo-sol); outline-offset: 2px; border-radius: 8px; }
+body.alto-contraste .link-mais-opcoes { opacity: 1; }
+
+.painel-mais {
+  background: var(--branco-giz);
+  border: 3px solid var(--grafite);
+  border-radius: var(--raio-grande);
+  padding: 24px;
+  max-width: 360px;
+  width: 100%;
+}
+body.alto-contraste .painel-mais { border-width: 4px; }
+
+.grupo-rotulo {
+  font-family: var(--fonte-titulo);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--grafite-suave);
+  margin: 16px 0 7px;
+}
+body.alto-contraste .grupo-rotulo { color: var(--grafite); }
+
+/* O menu ficou mais curto: deixa o conteúdo subir em vez de centralizar
+   num espaço vazio grande. */
+.tela-menu { justify-content: center; gap: 2px; }
+
+
+/* ====================================================================
+   FESTA DA JOGADA — faixa de celebração, confete e fogos
+   --------------------------------------------------------------------
+   O professor apontou na Sprint 4: "aparece um feedback, mas sem
+   destaque. Precisei prestar muita atenção para ver." A .mensagem-feedback
+   continua existindo (é ela que os testes leem), mas quem comunica o
+   resultado para a criança agora é esta faixa, que ocupa o campo inteiro.
+   ==================================================================== */
+
+.festa-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  border-radius: var(--raio-grande);
+  z-index: 3;
+}
+
+.faixa-celebracao {
+  position: absolute;
+  left: 50%;
+  bottom: 7%;
+  translate: -50% 0;
+  width: min(92%, 420px);
+  padding: 16px 20px;
+  border-radius: 20px;
+  text-align: center;
+  pointer-events: none;
+  z-index: 4;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 28px rgba(11, 30, 61, 0.45);
+  animation: faixa-entra 420ms cubic-bezier(0.18, 1.3, 0.45, 1) both;
+}
+.faixa-celebracao-texto {
+  display: block;
+  font-family: var(--fonte-titulo);
+  font-weight: 700;
+  font-size: clamp(1.05rem, 4.6vw, 1.7rem);
+  line-height: 1.2;
+  color: #FFFFFF;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+  text-wrap: balance;
+}
+
+/* Gol: verde-bandeira com um brilho amarelo pulsando atrás. */
+.faixa-celebracao[data-tipo="gol"] {
+  background: linear-gradient(145deg, #2E9E5B 0%, #17683A 100%);
+  animation: faixa-entra 420ms cubic-bezier(0.18, 1.3, 0.45, 1) both,
+             faixa-pulsa 900ms 420ms ease-in-out 2;
+}
+/* Acertou a conta mas perdeu o gol: azul acolhedor, NUNCA vermelho.
+   Vermelho aqui diria "você errou", e a conta estava certa. */
+.faixa-celebracao[data-tipo="quase"] {
+  background: linear-gradient(145deg, #3AA9D6 0%, #0F5C8C 100%);
+}
+/* Errou a conta: âmbar de "vamos de novo", também sem vermelho. */
+.faixa-celebracao[data-tipo="conta"] {
+  background: linear-gradient(145deg, #E8AC1D 0%, #8A5A00 100%);
+}
+/* Etapa 1: selo curto de "conta certa", antes da mira. */
+.faixa-celebracao[data-tipo="acerto"] {
+  background: linear-gradient(145deg, #2E9E5B 0%, #17683A 100%);
+  width: auto;
+  padding: 10px 22px;
+  bottom: auto;
+  top: 9%;
+}
+.faixa-celebracao[data-tipo="acerto"] .faixa-celebracao-texto {
+  font-size: clamp(0.95rem, 3.4vw, 1.25rem);
+}
+
+@keyframes faixa-entra {
+  from { opacity: 0; translate: -50% 14px; scale: 0.7; }
+  to   { opacity: 1; translate: -50% 0;    scale: 1; }
+}
+@keyframes faixa-pulsa {
+  0%, 100% { box-shadow: 0 10px 28px rgba(11, 30, 61, 0.45); }
+  50%      { box-shadow: 0 10px 28px rgba(11, 30, 61, 0.45), 0 0 0 10px rgba(255, 198, 59, 0.35); }
+}
+.faixa-celebracao.saindo {
+  animation: faixa-sai 260ms ease-in both;
+}
+@keyframes faixa-sai {
+  to { opacity: 0; scale: 0.9; }
+}
+
+/* Movimento reduzido: a faixa aparece inteira, sem entrada nem pulso.
+   O conteúdo é o mesmo — só o movimento sai. */
+@media (prefers-reduced-motion: reduce) {
+  .faixa-celebracao,
+  .faixa-celebracao[data-tipo="gol"],
+  .faixa-celebracao.saindo { animation: none; }
+}
+
+/* Alto contraste: o gradiente vira cor chapada com contorno grosso. */
+body.alto-contraste .faixa-celebracao {
+  background: #000000;
+  border-color: #FFFFFF;
+  border-width: 4px;
+}
+body.alto-contraste .faixa-celebracao-texto {
+  color: #FFFFFF;
+  text-shadow: none;
+}
