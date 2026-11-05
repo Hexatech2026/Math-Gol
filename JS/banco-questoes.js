@@ -15,11 +15,18 @@ var BancoQuestoes = (function() {
 
   // [a, b, tipo] — o nível da chave define o que é apropriado ali.
   var BANCO = {
-    1: [ // Somar até 10 — começa bem pequeno de propósito
-      [1,1,'soma'], [1,2,'soma'], [2,2,'soma'], [1,3,'soma'], [2,3,'soma'],
-      [1,4,'soma'], [3,5,'soma'], [6,2,'soma'], [7,1,'soma'], [4,4,'soma'],
-      [5,3,'soma'], [2,6,'soma'], [1,8,'soma'], [3,3,'soma'], [4,2,'soma'],
-      [5,5,'soma']
+    1: [ // Somar até 10 — começa bem pequeno de propósito.
+      // v2.2 (DEF-23): antes 6 das 16 contas davam 8 e a criança decorava a
+      // resposta. Agora são 21 contas e nenhum resultado aparece mais de 3x.
+      [1,1,'soma'],
+      [1,2,'soma'], [2,1,'soma'],
+      [1,3,'soma'], [2,2,'soma'], [3,1,'soma'],
+      [1,4,'soma'], [2,3,'soma'], [4,1,'soma'],
+      [1,5,'soma'], [2,4,'soma'], [3,3,'soma'],
+      [3,4,'soma'], [2,5,'soma'], [6,1,'soma'],
+      [3,5,'soma'], [6,2,'soma'],
+      [4,5,'soma'], [2,7,'soma'],
+      [5,5,'soma'], [4,6,'soma']
     ],
     2: [ // Subtrair até 10
       [5,2,'subtracao'], [8,3,'subtracao'], [7,4,'subtracao'], [9,5,'subtracao'],
@@ -31,10 +38,15 @@ var BancoQuestoes = (function() {
       [9,4,'subtracao'], [7,3,'subtracao'], [10,6,'subtracao'], [8,6,'subtracao'],
       [5,4,'soma'], [9,2,'subtracao'], [3,6,'soma'], [10,5,'subtracao']
     ],
-    4: [ // Passar do 10 (resultado 11–18)
-      [7,8,'soma'], [9,6,'soma'], [8,5,'soma'], [6,7,'soma'], [9,8,'soma'],
-      [7,6,'soma'], [8,8,'soma'], [9,9,'soma'], [5,8,'soma'], [6,6,'soma'],
-      [9,4,'soma'], [7,7,'soma']
+    4: [ // Passar do 10 (resultado 11–18). v2.2 (DEF-23): o 13 saía 5 em 12.
+      [2,9,'soma'], [5,6,'soma'], [8,3,'soma'],
+      [3,9,'soma'], [5,7,'soma'], [8,4,'soma'],
+      [4,9,'soma'], [6,7,'soma'], [8,5,'soma'],
+      [5,9,'soma'], [6,8,'soma'], [7,7,'soma'],
+      [6,9,'soma'], [7,8,'soma'], [9,6,'soma'],
+      [7,9,'soma'], [8,8,'soma'], [9,7,'soma'],
+      [8,9,'soma'], [9,8,'soma'],
+      [9,9,'soma']
     ],
     5: [ // Subtrair de números até 20
       [14,6,'subtracao'], [18,9,'subtracao'], [15,7,'subtracao'], [16,8,'subtracao'],

@@ -69,8 +69,67 @@ service cloud.firestore {
               'totalCobrancas', 'pontuacao', 'tempoTotalSegundos', 'resumoCobrancas', 'data'];
     }
 
+    // v2.0 — estado do craque (codigo do craque): carteira, progressao,
+    // conquistas e perfil, para continuar de outro aparelho. Mesmos limites
+    // de JS/backup-validacao.js (validarEstadoNuvem). Nada de dado pessoal:
+    // so numeros, ids de itens e textos escolhidos de listas.
+    function carteiraValida(c) {
+      return c is map && c.keys().hasOnly(['saldo', 'totalGanho', 'itens'])
+        && c.saldo is int && c.saldo >= 0 && c.saldo <= 999999
+        && c.totalGanho is int && c.totalGanho >= c.saldo && c.totalGanho <= 9999990
+        && c.itens is list && c.itens.size() <= 200;
+    }
+
+    function progressaoValida(p) {
+      return p is map && p.keys().hasOnly(['fasesDesbloqueadas', 'melhorPontuacao', 'melhorGols'])
+        && (!('fasesDesbloqueadas' in p) || (p.fasesDesbloqueadas is list && p.fasesDesbloqueadas.size() <= 3))
+        && (!('melhorPontuacao' in p) || (p.melhorPontuacao is map && p.melhorPontuacao.size() <= 3))
+        && (!('melhorGols' in p) || (p.melhorGols is map && p.melhorGols.size() <= 3));
+    }
+
+    function conquistasValidas(c) {
+      return c is map && c.keys().hasOnly(['feitas', 'contadores'])
+        && c.feitas is map && c.feitas.size() <= 60
+        && c.contadores is map && c.contadores.size() <= 12;
+    }
+
+    // v2.2: + titulo, comemoracao e numero da camisa (1 a 99, como texto).
+    function perfilLocalValido(p) {
+      return p is map && p.keys().hasOnly(['personagem', 'animal', 'avatarSeed', 'borda', 'titulo', 'comemoracao', 'numero'])
+        && (!('personagem' in p) || textoAte(p.personagem, 40))
+        && (!('animal' in p) || textoAte(p.animal, 40))
+        && (!('avatarSeed' in p) || textoAte(p.avatarSeed, 40))
+        && (!('borda' in p) || textoAte(p.borda, 40))
+        && (!('titulo' in p) || idValido(p.titulo))
+        && (!('comemoracao' in p) || idValido(p.comemoracao))
+        && (!('numero' in p) || (p.numero is string && p.numero.matches('^[1-9][0-9]?$')));
+    }
+
+    // v2.2 — Copa do Mundo 2026 (JS/copa.js): ate 8 jogos.
+    function copaValida(c) {
+      return c is map && c.keys().hasOnly(['selecaoId', 'grupo', 'semente', 'jogos', 'status'])
+        && idValido(c.selecaoId)
+        && c.grupo is string && c.grupo.matches('^[A-L]$')
+        && c.semente is int && c.semente >= 0
+        && c.status in ['andando', 'eliminado', 'campeao']
+        && c.jogos is list && c.jogos.size() <= 8;
+    }
+
+    function estadoValido(e) {
+      return e is map
+        && e.keys().hasOnly(['versao', 'atualizadoEm', 'carteira', 'progressao', 'conquistas', 'perfil', 'copa'])
+        && (!('copa' in e) || copaValida(e.copa))
+        && e.versao == 1
+        && e.atualizadoEm is int
+        && (!('carteira' in e) || carteiraValida(e.carteira))
+        && (!('progressao' in e) || progressaoValida(e.progressao))
+        && (!('conquistas' in e) || conquistasValidas(e.conquistas))
+        && (!('perfil' in e) || perfilLocalValido(e.perfil));
+    }
+
     function jogadorValido(d) {
-      return d.keys().hasOnly(['apelido', 'avatarSeed', 'atualizadoEm', 'ultimoAcessoEm', 'ultimoResultado'])
+      return d.keys().hasOnly(['apelido', 'avatarSeed', 'atualizadoEm', 'ultimoAcessoEm', 'ultimoResultado', 'estado'])
+        && (!('estado' in d) || estadoValido(d.estado))
         && (!('apelido' in d) || textoAte(d.apelido, 40))
         && (!('avatarSeed' in d) || textoAte(d.avatarSeed, 40))
         && (!('atualizadoEm' in d) || d.atualizadoEm is timestamp)
@@ -96,18 +155,21 @@ service cloud.firestore {
 
     // ---------- Dados privados de cada jogador ----------
 
-    // Politica (conciliada com o relatorio de QA): o dono so pode LER o
-    // proprio documento (get) e LISTAR o proprio historico (usado pelo
-    // backup). Ninguem lista a colecao "jogadores" e nenhum cliente apaga:
-    // exclusao de dados e feita pela equipe (Console/Admin SDK) a pedido.
+    // Politica: o dono so pode LER o proprio documento (get) e LISTAR o
+    // proprio historico (usado pelo backup). Ninguem lista a colecao
+    // "jogadores".
+    // v2.0 (LGPD art. 18, eliminacao): o DONO pode apagar os proprios
+    // dados pelo botao "Apagar meus dados" — antes so a equipe apagava, a
+    // pedido. Ninguem apaga dado de outra pessoa.
     match /jogadores/{uid} {
       allow get: if ehDono(uid);
       allow create, update: if ehDono(uid) && jogadorValido(request.resource.data);
-      allow list, delete: if false;
+      allow delete: if ehDono(uid);
+      allow list: if false;
 
       match /resultados/{resultadoId} {
         allow get, list: if ehDono(uid);
-        allow delete: if false;
+        allow delete: if ehDono(uid);
         allow create, update: if ehDono(uid)
           && resultadoId.matches('^[A-Za-z0-9_-]{1,64}$')
           && resultadoValido(request.resource.data);
@@ -116,7 +178,8 @@ service cloud.firestore {
 
     match /apelidos/{uid} {
       allow get: if ehDono(uid);
-      allow list, delete: if false;
+      allow delete: if ehDono(uid);
+      allow list: if false;
       allow create, update: if ehDono(uid) && apelidoValido(request.resource.data);
     }
 
@@ -139,27 +202,127 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Nega tudo mais por padrão (inclui documentos antigos de "token").
-    // HU-14 — Sala do Professor. Quem sabe o codigo entra; o professor dita
-    // o codigo para a turma. Mesmo modelo anonimo do resto do jogo: o uid do
-    // Auth identifica quem entrou, sem nome real nem e-mail.
+    // HU-14 — Sala do Professor. O professor dita o codigo para a turma.
+    // Mesmo modelo anonimo do resto do jogo: o uid do Auth identifica quem
+    // entrou, sem nome real nem e-mail.
     //
-    // RESSALVA (card R03): "dono" guarda o uid do professor, mas NAO e
-    // checado aqui — qualquer cliente com o codigo pode trocar o nivel da
-    // sala, e a lista de alunos e legivel por quem tiver o codigo.
-    // Para turma de verdade, trocar a linha de update por:
-    //   allow update: if request.auth != null
-    //                 && resource.data.dono == request.auth.uid;
+    // Card R03 (resolvido): saber o codigo da LEITURA da sala (e como a
+    // crianca entra e descobre o nivel), mas NAO da direito de trocar o
+    // nivel, de listar as salas nem de ver a turma. Isso e so do professor
+    // que criou a sala ("dono" == uid dele).
+    function codigoSalaValido(c) {
+      return c.matches('^[A-Z0-9]{3}-[A-Z0-9]{3}$');
+    }
+
+    function salaValida(d) {
+      return d.keys().hasOnly(['nome', 'nivel', 'tipos', 'dono', 'criadoEm', 'pausada', 'expiraEm'])
+        && d.dono is string
+        && textoAte(d.nome, 40)
+        && d.nivel is int && d.nivel >= 1 && d.nivel <= 12
+        && d.tipos is list && d.tipos.size() <= 4
+        && d.tipos.hasOnly(['soma', 'subtracao', 'multiplicacao', 'divisao'])
+        // HU-15: pausa da aula. So o dono grava (regra de update abaixo).
+        && (!('pausada' in d) || d.pausada is bool)
+        // HU-20: data de validade da sala (TTL do Firestore apaga).
+        && (!('expiraEm' in d) || d.expiraEm is timestamp);
+    }
+
+    function ehProfessorDaSala(codigo) {
+      return autenticado()
+        && get(/databases/$(database)/documents/salas/$(codigo)).data.dono == request.auth.uid;
+    }
+
     match /salas/{codigo} {
-      allow read: if true;
-      allow create, update: if true;
+      allow get: if autenticado();
+      allow list: if false;
+      allow create: if autenticado()
+        && codigoSalaValido(codigo)
+        && request.resource.data.dono == request.auth.uid
+        && request.resource.data.criadoEm == request.time
+        && salaValida(request.resource.data);
+      allow update: if autenticado()
+        && resource.data.dono == request.auth.uid
+        && request.resource.data.dono == resource.data.dono
+        && request.resource.data.criadoEm == resource.data.criadoEm
+        && salaValida(request.resource.data);
       allow delete: if false;
 
+      // Cada crianca so escreve (e apaga) o PROPRIO lugar na sala; isso vira
+      // nota no PDF/Excel do professor. So o professor da sala lista a
+      // turma. Nome de verdade NUNCA vem para ca: o professor guarda so no
+      // navegador dele.
       match /alunos/{uid} {
-        allow read, write: if true;
+        allow get: if ehDono(uid) || ehProfessorDaSala(codigo);
+        allow list: if ehProfessorDaSala(codigo);
+        allow delete: if ehDono(uid);
+        allow create, update: if ehDono(uid)
+          && request.resource.data.keys().hasOnly(
+               ['apelido', 'avatarSeed', 'gols', 'pontuacao', 'fase', 'nivelId', 'verificado',
+                'totais', 'atualizadoEm', 'ultimaPartidaEm']);
       }
     }
 
+    // ---------- HU-21: duelo online (partidas/{codigo}) ----------
+    //
+    // Codigo de 4 digitos, ditado de uma crianca para a outra. Saber o
+    // codigo deixa LER a partida e entrar nela; nao deixa varrer as
+    // partidas nem escrever no placar de ninguem (CA-21.8). A lista de
+    // jogadores so e visivel para quem ja esta dentro da partida.
+    function codigoPartidaValido(c) {
+      return c.matches('^[0-9]{4}$');
+    }
+
+    function partidaValida(d) {
+      return d.keys().hasOnly(['dono', 'nivel', 'perguntas', 'status', 'criadoEm', 'expiraEm'])
+        && d.dono is string
+        && d.nivel is int && d.nivel >= 1 && d.nivel <= 12
+        && d.perguntas is list && d.perguntas.size() > 0 && d.perguntas.size() <= 10
+        && d.status in ['esperando', 'jogando', 'fim']
+        && (!('expiraEm' in d) || d.expiraEm is timestamp);
+    }
+
+    function jogadorPartidaValido(d) {
+      return d.keys().hasOnly(['apelido', 'avatarSeed', 'gols', 'pontuacao',
+                               'cobranca', 'fim', 'atualizadoEm'])
+        && textoAte(d.apelido, 40)
+        && (!('avatarSeed' in d) || d.avatarSeed is string)
+        && d.gols is int && d.gols >= 0 && d.gols <= 10
+        && d.pontuacao is int && d.pontuacao >= 0 && d.pontuacao <= 1000
+        && d.cobranca is int && d.cobranca >= 0 && d.cobranca <= 10
+        && d.fim is bool;
+    }
+
+    function estaNaPartida(codigo) {
+      return autenticado()
+        && exists(/databases/$(database)/documents/partidas/$(codigo)/jogadores/$(request.auth.uid));
+    }
+
+    match /partidas/{codigo} {
+      allow get: if autenticado();
+      allow list: if false;
+      allow create: if autenticado()
+        && codigoPartidaValido(codigo)
+        && request.resource.data.dono == request.auth.uid
+        && request.resource.data.criadoEm == request.time
+        && partidaValida(request.resource.data);
+      // So o status anda; as perguntas combinadas nao mudam no meio.
+      allow update: if autenticado()
+        && resource.data.dono == request.auth.uid
+        && request.resource.data.dono == resource.data.dono
+        && request.resource.data.perguntas == resource.data.perguntas
+        && request.resource.data.nivel == resource.data.nivel
+        && partidaValida(request.resource.data);
+      allow delete: if false;
+
+      match /jogadores/{uid} {
+        allow get: if ehDono(uid) || estaNaPartida(codigo);
+        allow list: if estaNaPartida(codigo);
+        allow create, update: if ehDono(uid) && jogadorPartidaValido(request.resource.data);
+        allow delete: if ehDono(uid);
+      }
+    }
+
+    // Nega tudo mais por padrão (inclui documentos antigos de "token").
     match /{document=**} {
       allow read, write: if false;
     }

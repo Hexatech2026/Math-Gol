@@ -148,6 +148,39 @@ function rotuloNivel(id) {
   return 'Nível ' + nv.id + ' · ' + tipos + ' · ' + tamanho;
 }
 
+// ---------- Subir de nivel SEM trocar o tipo de conta (v2.2) ----------
+//
+// Defeito encontrado: cada fase subia UM degrau da escada, mas o degrau
+// seguinte nem sempre e da mesma operacao. Quem escolhia o nivel 2 (so
+// subtracao) caia no 3 (soma e subtracao) na fase seguinte e no 4 (so
+// soma) depois — o tipo que a crianca escolheu treinar mudava sozinho.
+//
+// Agora a subida anda so pelos niveis com EXATAMENTE os mesmos tipos de
+// conta, do mais facil para o mais dificil:
+//   soma            1 → 4 → 6
+//   subtracao       2 → 5
+//   soma+subtracao  3 → 7
+//   multiplicacao   8 → 9
+//   divisao         10 → 11
+//   as quatro       12
+// Quando a cadeia acaba, fica no ultimo degrau dela.
+function mesmosTipos(a, b) {
+  if (a.length !== b.length) return false;
+  return a.every(function(t) { return b.indexOf(t) !== -1; });
+}
+
+function cadeiaDoNivel(id) {
+  var base = obterNivel(id);
+  return NIVEIS.filter(function(nv) { return nv.id >= base.id && mesmosTipos(nv.tipos, base.tipos); })
+    .map(function(nv) { return nv.id; });
+}
+
+// Nivel `passos` degraus acima de `id`, sem sair do mesmo tipo de conta.
+function nivelAcimaMesmoTipo(id, passos) {
+  var cadeia = cadeiaDoNivel(id);
+  return cadeia[Math.max(0, Math.min(cadeia.length - 1, passos || 0))];
+}
+
 // ---------- Compatibilidade com as 3 dificuldades antigas ----------
 //
 // Jogadores que já tinham progresso salvo escolheram facil/medio/dificil.
